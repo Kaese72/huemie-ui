@@ -1,5 +1,7 @@
 # Huemie UI
 
+This UI is intended to be used with the Huemie system to visualize and act on devices in your home
+
 ## Development
 
 A few things are required to make development easy.
