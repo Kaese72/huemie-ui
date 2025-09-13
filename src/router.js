@@ -37,9 +37,8 @@ const routes = [
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }
 ];
 
-const base = import.meta.env.VITE_ROUTER_BASE || '/';
 const router = createRouter({
-  history: createWebHistory(base),
+  history: createWebHistory("huemie-ui"),
   routes
 });
 
