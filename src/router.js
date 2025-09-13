@@ -1,10 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Home from './Home.vue';
 import DeviceTable from './DeviceTable.vue';
-
+import GroupTable from './GroupTable.vue'
 
 import NotFound from './NotFound.vue';
 import DeviceDetail from './DeviceDetail.vue';
+import GroupDetail from './GroupDetail.vue'
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -21,11 +22,24 @@ const routes = [
       }
     ]
   },
+  {
+    path: '/groups',
+    name: 'Groups',
+    component: GroupTable,
+    children: [
+      {
+        path: ':id',
+        name: 'GroupDetail',
+        component: GroupDetail
+      }
+    ]
+  },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }
 ];
 
+const base = import.meta.env.VITE_ROUTER_BASE || '/';
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(base),
   routes
 });
 

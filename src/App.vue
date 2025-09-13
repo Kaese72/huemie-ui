@@ -1,4 +1,3 @@
-
 <script setup>
 </script>
 
@@ -11,6 +10,9 @@
         </li>
         <li>
           <router-link to="/devices">Devices</router-link>
+        </li>
+        <li>
+          <router-link to="/groups">Groups</router-link>
         </li>
       </ul>
     </nav>

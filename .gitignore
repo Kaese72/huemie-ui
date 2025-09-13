@@ -31,3 +31,4 @@ coverage
 
 # Debug setup using nginx
 nginx
+.resources

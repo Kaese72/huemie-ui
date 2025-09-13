@@ -23,12 +23,14 @@ onMounted(async () => {
 
   // Open Server-Sent Events (SSE) for device events
   function connectSSE() {
+    console.log('Connecting to SSE...');
     if (eventSource) {
       eventSource.close();
       eventSource = null;
     }
     eventSource = new EventSource('/device-store/v0/devices/events');
-    eventSource.onmessage = (event) => {
+    eventSource.addEventListener('update', (event) => {
+      console.log('SSE message received:', event.data);
       try {
         const data = JSON.parse(event.data);
         if (data['device-id'] && Array.isArray(data.attributes)) {
@@ -52,10 +54,12 @@ onMounted(async () => {
         }
       } catch (e) {
         // Ignore parse errors
+        console.log('Error parsing SSE data:', e);
       }
-    };
+    });
     eventSource.onerror = (event) => {
       // Close and reconnect after a delay (e.g., 2 seconds)
+      console.log('SSE error, attempting to reconnect...', event);
       if (eventSource) {
         eventSource.close();
         eventSource = null;
