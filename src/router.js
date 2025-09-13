@@ -38,7 +38,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory("huemie-ui"),
+  history: createWebHistory(),
   routes
 });
 
