@@ -11,7 +11,7 @@ const devices = ref([])
 const error = ref(null)
 const router = useRouter()
 const route = useRoute()
-const knownAttributes = ['description', 'active', 'colorx', 'colory', 'colorct']
+const knownAttributes = ['description', 'active', 'brightness', 'colorx', 'colory', 'colorct']
 
 onMounted(async () => {
   try {

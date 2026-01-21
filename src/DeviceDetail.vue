@@ -4,10 +4,13 @@ import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRoute } from 'vue-router'
 import { extractAttribute } from './utils/deviceUtil.js'
+import CapabilityDialog from './components/CapabilityDialog.vue'
 
 const route = useRoute()
 const device = ref(null)
 const error = ref(null)
+const showDialog = ref(false)
+const selectedCapability = ref(null)
 
 onMounted(fetchDevice)
 watch(() => route.params.id, fetchDevice)
@@ -26,15 +29,31 @@ async function fetchDevice() {
 
 // extractAttribute is now imported from utils
 
-function triggerCapability(capability) {
-  if (!device.value) return;
-  axios.post(`/device-store/v0/devices/${device.value.id}/capabilities/${capability}`)
+function openCapabilityDialog(capability) {
+  selectedCapability.value = capability
+  showDialog.value = true
+}
+
+function closeDialog() {
+  showDialog.value = false
+  selectedCapability.value = null
+}
+
+function triggerCapability(argumentValues) {
+  if (!device.value || !selectedCapability.value) return;
+  
+  axios.post(
+    `/device-store/v0/devices/${device.value.id}/capabilities/${selectedCapability.value.name}`,
+    argumentValues
+  )
     .then(response => {
+      closeDialog()
       // Optionally show a success message
       // e.g., alert('Capability triggered!');
     })
     .catch(error => {
       // Optionally show an error message
+      console.error('Error triggering capability:', error)
       // e.g., alert('Error triggering capability');
     });
 }
@@ -52,11 +71,19 @@ function triggerCapability(capability) {
     <div v-if="device.capabilities && device.capabilities.length">
       <h3>Capabilities</h3>
       <div class="capabilities-list">
-        <button v-for="cap in device.capabilities" :key="cap.name" @click="triggerCapability(cap.name)">
+        <button v-for="cap in device.capabilities" :key="cap.name" @click="openCapabilityDialog(cap)">
           Trigger {{ cap.name }}
         </button>
       </div>
     </div>
+    
+    <CapabilityDialog
+      v-if="selectedCapability"
+      :capability="selectedCapability"
+      :show="showDialog"
+      @close="closeDialog"
+      @trigger="triggerCapability"
+    />
   </div>
   <div v-else>Loading...</div>
 </template>
