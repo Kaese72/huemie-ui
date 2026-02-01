@@ -2,10 +2,12 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Home from './Home.vue';
 import DeviceTable from './DeviceTable.vue';
 import GroupTable from './GroupTable.vue'
+import AdapterTable from './AdapterTable.vue';
 
 import NotFound from './NotFound.vue';
 import DeviceDetail from './DeviceDetail.vue';
 import GroupDetail from './GroupDetail.vue'
+import AdapterDetail from './AdapterDetail.vue';
 
 const routes = [
   { path: '/', redirect: '/home' },
@@ -31,6 +33,18 @@ const routes = [
         path: ':id',
         name: 'GroupDetail',
         component: GroupDetail
+      }
+    ]
+  },
+  {
+    path: '/adapters',
+    name: 'Adapters',
+    component: AdapterTable,
+    children: [
+      {
+        path: ':id',
+        name: 'AdapterDetail',
+        component: AdapterDetail
       }
     ]
   },

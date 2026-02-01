@@ -14,6 +14,9 @@
         <li>
           <router-link to="/groups">Groups</router-link>
         </li>
+        <li>
+          <router-link to="/adapters">Adapters</router-link>
+        </li>
       </ul>
     </nav>
     <main class="main-content">
