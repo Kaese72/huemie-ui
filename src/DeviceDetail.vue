@@ -2,11 +2,12 @@
 
 import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { extractAttribute } from './utils/deviceUtil.js'
 import CapabilityDialog from './components/CapabilityDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const device = ref(null)
 const error = ref(null)
 const showDialog = ref(false)
@@ -57,6 +58,20 @@ function triggerCapability(argumentValues) {
       // e.g., alert('Error triggering capability');
     });
 }
+
+async function forgetDevice() {
+  if (!device.value) return
+  const accepted = window.confirm(`Forget device ${device.value.id}?`)
+  if (!accepted) return
+
+  try {
+    await axios.delete(`/device-store/v0/devices/${device.value.id}`)
+    window.dispatchEvent(new CustomEvent('device-forgotten', { detail: { id: device.value.id } }))
+    await router.push({ name: 'Devices' })
+  } catch (err) {
+    error.value = err
+  }
+}
 </script>
 
 <template>
@@ -75,6 +90,9 @@ function triggerCapability(argumentValues) {
           Trigger {{ cap.name }}
         </button>
       </div>
+    </div>
+    <div class="forget-section">
+      <button class="forget-button" @click="forgetDevice">Forget device</button>
     </div>
     
     <CapabilityDialog
@@ -113,5 +131,20 @@ ul {
 }
 li {
   margin-bottom: 0.5rem;
+}
+.forget-section {
+  margin-top: 1rem;
+}
+.forget-button {
+  padding: 0.5rem 1rem;
+  background: #42b983;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.forget-button:hover {
+  background: #369870;
 }
 </style>

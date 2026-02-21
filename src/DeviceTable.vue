@@ -13,6 +13,14 @@ const router = useRouter()
 const route = useRoute()
 const knownAttributes = ['description', 'active', 'brightness', 'colorx', 'colory', 'colorct']
 
+function onDeviceForgotten(event) {
+  const forgottenId = event?.detail?.id
+  if (forgottenId == null) {
+    return
+  }
+  devices.value = devices.value.filter(device => device.id !== forgottenId)
+}
+
 onMounted(async () => {
   try {
     const response = await axios.get('/device-store/v0/devices')
@@ -69,6 +77,8 @@ onMounted(async () => {
     };
   }
   connectSSE();
+
+  window.addEventListener('device-forgotten', onDeviceForgotten)
 });
 onBeforeUnmount(() => {
   if (eventSource) {
@@ -79,6 +89,7 @@ onBeforeUnmount(() => {
     clearTimeout(reconnectTimeout);
     reconnectTimeout = null;
   }
+  window.removeEventListener('device-forgotten', onDeviceForgotten)
 });
 
 // extractAttribute is now imported from utils
