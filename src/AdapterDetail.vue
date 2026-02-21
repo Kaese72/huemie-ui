@@ -179,7 +179,7 @@ async function updateImageTag() {
         </ul>
       </div>
 
-      <div class="info-section" v-if="configurations.length">
+      <div class="info-section">
         <h3>Configuration</h3>
         <div class="config-add">
           <div class="config-row">
@@ -210,7 +210,7 @@ async function updateImageTag() {
             </div>
           </div>
         </div>
-        <div class="config-table">
+        <div class="config-table" v-if="configurations.length">
           <div class="config-row config-header">
             <div class="config-cell key-cell">Key</div>
             <div class="config-cell value-cell">Value</div>
@@ -242,6 +242,7 @@ async function updateImageTag() {
             </div>
           </div>
         </div>
+        <div v-else>No configuration entries yet.</div>
       </div>
     </div>
   </div>

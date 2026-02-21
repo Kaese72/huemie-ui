@@ -6,17 +6,63 @@ import { useRouter, useRoute } from 'vue-router'
 
 const adapters = ref([])
 const error = ref(null)
+const creatingAdapter = ref(false)
+const showCreateDialog = ref(false)
+const newAdapter = ref({
+  name: '',
+  imageName: '',
+  imageTag: ''
+})
 const router = useRouter()
 const route = useRoute()
 
-onMounted(async () => {
+onMounted(fetchAdapters)
+
+async function fetchAdapters() {
   try {
     const response = await axios.get('/adapter-attendant/v1/adapters')
     adapters.value = response.data || []
+    error.value = null
   } catch (err) {
     error.value = err
   }
-})
+}
+
+async function createAdapter() {
+  if (!newAdapter.value.name || !newAdapter.value.imageName || !newAdapter.value.imageTag) {
+    return
+  }
+  creatingAdapter.value = true
+  try {
+    const response = await axios.post('/adapter-attendant/v1/adapters', {
+      name: newAdapter.value.name,
+      imageName: newAdapter.value.imageName,
+      imageTag: newAdapter.value.imageTag
+    })
+    const created = response.data
+    adapters.value = [...adapters.value, created]
+    newAdapter.value = { name: '', imageName: '', imageTag: '' }
+    showCreateDialog.value = false
+    error.value = null
+    router.push({ name: 'AdapterDetail', params: { id: created.id } })
+  } catch (err) {
+    error.value = err
+  } finally {
+    creatingAdapter.value = false
+  }
+}
+
+function openCreateDialog() {
+  showCreateDialog.value = true
+}
+
+function closeCreateDialog() {
+  if (creatingAdapter.value) {
+    return
+  }
+  showCreateDialog.value = false
+  newAdapter.value = { name: '', imageName: '', imageTag: '' }
+}
 
 function onRowClick(adapterId) {
   if (selectedId.value === String(adapterId)) {
@@ -33,7 +79,10 @@ const selectedId = computed(() => route.params.id)
 <template>
   <div class="adapter-split-layout">
     <div class="adapter-table" :class="{ 'half': selectedId }">
-      <h1>Adapters</h1>
+      <div class="title-row">
+        <h1>Adapters</h1>
+        <button class="create-button" @click="openCreateDialog">Create</button>
+      </div>
       <div v-if="error">Error: {{ error.message }}</div>
       <div class="table-wrapper">
         <div class="table-header">
@@ -54,6 +103,40 @@ const selectedId = computed(() => route.params.id)
     </div>
     <div v-if="selectedId" class="adapter-detail-half">
       <router-view />
+    </div>
+
+    <div v-if="showCreateDialog" class="dialog-backdrop">
+      <div class="dialog">
+        <h3>Create Adapter</h3>
+        <input
+          v-model="newAdapter.name"
+          class="create-input create-name"
+          type="text"
+          placeholder="Name"
+        />
+        <input
+          v-model="newAdapter.imageName"
+          class="create-input"
+          type="text"
+          placeholder="Image name"
+        />
+        <input
+          v-model="newAdapter.imageTag"
+          class="create-input"
+          type="text"
+          placeholder="Image tag"
+        />
+        <div class="dialog-actions">
+          <button
+            class="dialog-save-button"
+            :disabled="creatingAdapter || !newAdapter.name || !newAdapter.imageName || !newAdapter.imageTag"
+            @click="createAdapter"
+          >
+            {{ creatingAdapter ? 'Saving...' : 'Save' }}
+          </button>
+          <button class="dialog-cancel-button" :disabled="creatingAdapter" @click="closeCreateDialog">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -80,6 +163,90 @@ const selectedId = computed(() => route.params.id)
   flex: 1;
   max-width: 50%;
 }
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.create-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  margin-bottom: 0.6rem;
+}
+.create-name {
+  min-width: 0;
+}
+.create-button {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid #2e7d32;
+  background: #2e7d32;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.create-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.dialog {
+  width: 420px;
+  max-width: calc(100vw - 2rem);
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  padding: 1rem;
+}
+
+.dialog h3 {
+  margin-top: 0;
+  margin-bottom: 0.8rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.dialog-save-button,
+.dialog-cancel-button {
+  padding: 0.45rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dialog-save-button {
+  border: 1px solid #2e7d32;
+  background: #2e7d32;
+  color: #fff;
+}
+
+.dialog-save-button:disabled,
+.dialog-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dialog-cancel-button {
+  border: 1px solid #d0d0d0;
+  background: #f4f4f4;
+  color: #222;
+}
+
 .adapter-detail-half {
   flex: 1;
   max-width: 50%;
