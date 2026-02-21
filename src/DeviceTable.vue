@@ -3,7 +3,7 @@
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
-import { extractAttribute } from './utils/deviceUtil.js'
+import { extractAttribute, extractAttributeUpdated } from './utils/deviceUtil.js'
 
 let eventSource = null;
 let reconnectTimeout = null;
@@ -12,6 +12,12 @@ const error = ref(null)
 const router = useRouter()
 const route = useRoute()
 const knownAttributes = ['description', 'active', 'brightness', 'colorx', 'colory', 'colorct']
+
+function getAttributeTooltip(device, attributeName) {
+  const value = extractAttribute(device, attributeName)
+  const updated = extractAttributeUpdated(device, attributeName)
+  return `Value: ${value}\nUpdated: ${updated}`
+}
 
 function onDeviceForgotten(event) {
   const forgottenId = event?.detail?.id
@@ -130,7 +136,7 @@ const selectedId = computed(() => route.params.id)
         </div>
         <div v-for="device in devices" :key="device.id" @click="onRowClick(device)" :class="['table-row', { selected: device.id === selectedId }]">
           <div class="table-cell id-cell" :title="device.id">{{ device.id }}</div>
-          <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell" :title="extractAttribute(device, attr)">
+          <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell" :title="getAttributeTooltip(device, attr)">
             {{ extractAttribute(device, attr) }}
           </div>
         </div>

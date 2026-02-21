@@ -35,3 +35,11 @@ export function extractAttribute(device, attributeName) {
   }
   return 'Unknown';
 }
+
+export function extractAttributeUpdated(device, attributeName) {
+  if (!device || !device.attributes) return 'Unknown';
+  const attribute = device.attributes.find(attr => attr.name === attributeName);
+  if (!attribute) return 'Unknown';
+  if (!attribute.updated) return 'Unknown';
+  return attribute.updated;
+}

@@ -3,7 +3,6 @@
 import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
-import { extractAttribute } from './utils/deviceUtil.js'
 import CapabilityDialog from './components/CapabilityDialog.vue'
 
 const route = useRoute()
@@ -27,8 +26,6 @@ async function fetchDevice() {
     device.value = null
   }
 }
-
-// extractAttribute is now imported from utils
 
 function openCapabilityDialog(capability) {
   selectedCapability.value = capability
@@ -59,6 +56,20 @@ function triggerCapability(argumentValues) {
     });
 }
 
+function extractAttributeValue(attribute) {
+  if (!attribute) return 'Unknown'
+  if (attribute['string-state'] !== undefined && attribute['string-state'] !== null && attribute['string-state'] !== '') {
+    return attribute['string-state']
+  }
+  if (attribute['boolean-state'] !== undefined && attribute['boolean-state'] !== null) {
+    return attribute['boolean-state']
+  }
+  if (attribute['numeric-state'] !== undefined && attribute['numeric-state'] !== null) {
+    return attribute['numeric-state']
+  }
+  return 'Unknown'
+}
+
 async function forgetDevice() {
   if (!device.value) return
   const accepted = window.confirm(`Forget device ${device.value.id}?`)
@@ -78,18 +89,52 @@ async function forgetDevice() {
   <div v-if="error">Error: {{ error.message }}</div>
   <div v-else-if="device">
     <h2>Device Details: {{ device.id }}</h2>
-    <ul>
-      <li><strong>Description:</strong> {{ extractAttribute(device, 'description') }}</li>
-      <li><strong>Active:</strong> {{ extractAttribute(device, 'active') }}</li>
-      <!-- Add more attributes as needed -->
-    </ul>
+    <div class="device-meta">
+      <strong>Last updated:</strong> {{ device.updated || 'Unknown' }}
+    </div>
+
+    <div v-if="device.attributes && device.attributes.length">
+      <h3>Attributes</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="attribute in device.attributes" :key="attribute.name">
+            <td>{{ attribute.name }}</td>
+            <td>{{ extractAttributeValue(attribute) }}</td>
+            <td>{{ attribute.updated || 'Unknown' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <div v-if="device.capabilities && device.capabilities.length">
       <h3>Capabilities</h3>
-      <div class="capabilities-list">
-        <button v-for="cap in device.capabilities" :key="cap.name" @click="openCapabilityDialog(cap)">
-          Trigger {{ cap.name }}
-        </button>
-      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Updated</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="cap in device.capabilities" :key="cap.name">
+            <td>{{ cap.name }}</td>
+            <td>{{ cap.updated || 'Unknown' }}</td>
+            <td>
+              <button class="trigger-button" @click="openCapabilityDialog(cap)">
+                Trigger {{ cap.name }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     <div class="forget-section">
       <button class="forget-button" @click="forgetDevice">Forget device</button>
@@ -107,30 +152,34 @@ async function forgetDevice() {
 </template>
 
 <style scoped>
-  .capabilities-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-  .capabilities-list button {
-    padding: 0.5rem 1rem;
-    background: #42b983;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .capabilities-list button:hover {
-    background: #369870;
-  }
-ul {
-  list-style: none;
-  padding: 0;
+.device-meta {
+  margin-bottom: 1rem;
 }
-li {
-  margin-bottom: 0.5rem;
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.data-table th,
+.data-table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  text-align: left;
+}
+.data-table th {
+  background: #f5f5f5;
+}
+.trigger-button {
+  padding: 0.5rem 1rem;
+  background: #42b983;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.trigger-button:hover {
+  background: #369870;
 }
 .forget-section {
   margin-top: 1rem;
