@@ -53,16 +53,26 @@ onMounted(async () => {
           if (idx !== -1) {
             // Merge updated attributes into the device
             const updatedDevice = { ...devices.value[idx] };
+            let latestAttributeUpdated = updatedDevice.updated || null;
             updatedDevice.attributes = updatedDevice.attributes.map(attr => {
               const update = data.attributes.find(a => a.name === attr.name);
+              if (update?.updated && (!latestAttributeUpdated || update.updated > latestAttributeUpdated)) {
+                latestAttributeUpdated = update.updated;
+              }
               return update ? { ...attr, ...update } : attr;
             });
             // Add any new attributes from the update
             data.attributes.forEach(update => {
+              if (update?.updated && (!latestAttributeUpdated || update.updated > latestAttributeUpdated)) {
+                latestAttributeUpdated = update.updated;
+              }
               if (!updatedDevice.attributes.find(attr => attr.name === update.name)) {
                 updatedDevice.attributes.push(update);
               }
             });
+            if (latestAttributeUpdated) {
+              updatedDevice.updated = latestAttributeUpdated;
+            }
             devices.value.splice(idx, 1, updatedDevice);
           }
         }
@@ -132,10 +142,12 @@ const selectedId = computed(() => route.params.id)
       <div class="table-wrapper">
         <div class="table-header">
           <div class="table-cell id-cell">ID</div>
+          <div class="table-cell updated-cell">Updated</div>
           <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell">{{ attr }}</div>
         </div>
         <div v-for="device in devices" :key="device.id" @click="onRowClick(device)" :class="['table-row', { selected: device.id === selectedId }]">
           <div class="table-cell id-cell" :title="device.id">{{ device.id }}</div>
+          <div class="table-cell updated-cell" :title="device.updated">{{ device.updated }}</div>
           <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell" :title="getAttributeTooltip(device, attr)">
             {{ extractAttribute(device, attr) }}
           </div>
@@ -230,5 +242,10 @@ const selectedId = computed(() => route.params.id)
 }
 .attr-cell {
   text-transform: capitalize;
+}
+.updated-cell {
+  min-width: 220px;
+  max-width: 220px;
+  width: 220px;
 }
 </style>
