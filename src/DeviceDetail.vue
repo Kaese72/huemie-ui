@@ -90,6 +90,7 @@ async function forgetDevice() {
   <div v-else-if="device">
     <h2>Device Details: {{ device.id }}</h2>
     <div class="device-meta">
+      <strong>Bridge identifier:</strong> {{ device['bridge-identifier'] }}<br>
       <strong>Last updated:</strong> {{ device.updated || 'Unknown' }}
     </div>
 

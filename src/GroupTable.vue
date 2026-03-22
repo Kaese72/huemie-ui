@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -16,7 +16,18 @@ onMounted(async () => {
   } catch (err) {
     error.value = err
   }
+  window.addEventListener('group-forgotten', onGroupForgotten)
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('group-forgotten', onGroupForgotten)
+})
+
+function onGroupForgotten(event) {
+  const forgottenId = event?.detail?.id
+  if (forgottenId == null) return
+  groups.value = groups.value.filter(group => group.id !== forgottenId)
+}
 
 function onRowClick(group) {
   if (selectedId.value == group.id) {

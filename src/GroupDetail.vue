@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import CapabilityDialog from './components/CapabilityDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const group = ref(null)
 const error = ref(null)
 const showDialog = ref(false)
@@ -34,6 +35,19 @@ function closeDialog() {
 	selectedCapability.value = null
 }
 
+async function forgetGroup() {
+	if (!group.value) return
+	const accepted = window.confirm(`Forget group ${group.value.id}?`)
+	if (!accepted) return
+	try {
+		await axios.delete(`/device-store/v0/groups/${group.value.id}`)
+		window.dispatchEvent(new CustomEvent('group-forgotten', { detail: { id: group.value.id } }))
+		await router.push({ name: 'Groups' })
+	} catch (err) {
+		error.value = err
+	}
+}
+
 function triggerCapability(argumentValues) {
 	if (!group.value || !selectedCapability.value) return
 	axios.post(
@@ -51,6 +65,7 @@ function triggerCapability(argumentValues) {
 		<h2>Group Details: {{ group.id }}</h2>
 		<div class="group-meta">
 			<strong>Name:</strong> {{ group.name }}<br>
+			<strong>Bridge identifier:</strong> {{ group['bridge-identifier'] }}<br>
 			<strong>Last updated:</strong> {{ group.updated || 'Unknown' }}
 		</div>
 
@@ -76,6 +91,10 @@ function triggerCapability(argumentValues) {
 					</tr>
 				</tbody>
 			</table>
+		</div>
+
+		<div class="forget-section">
+			<button class="forget-button" @click="forgetGroup">Forget group</button>
 		</div>
 
 		<CapabilityDialog
@@ -117,6 +136,21 @@ function triggerCapability(argumentValues) {
 	transition: background 0.2s;
 }
 .trigger-button:hover {
+	background: #369870;
+}
+.forget-section {
+	margin-top: 1rem;
+}
+.forget-button {
+	padding: 0.5rem 1rem;
+	background: #42b983;
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+.forget-button:hover {
 	background: #369870;
 }
 </style>
