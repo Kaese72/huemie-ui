@@ -1,14 +1,19 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useViewMode } from './composables/useViewMode.js'
+import MobileApp from './mobile/MobileApp.vue'
 
 const locked = ref(false)
 const hovered = ref(false)
-
 const expanded = computed(() => locked.value || hovered.value)
+
+const { viewMode, isMobileDevice, toggleViewMode } = useViewMode()
 </script>
 
 <template>
-  <div class="app-layout">
+  <MobileApp v-if="viewMode === 'mobile'" />
+
+  <div v-else class="app-layout">
     <nav class="sidebar" :class="{ collapsed: !expanded }" @mouseenter="hovered = true" @mouseleave="hovered = false">
       <button class="collapse-btn" :style="{ visibility: expanded ? 'visible' : 'hidden' }" @click="locked = !locked" :title="locked ? 'Unlock menu' : 'Lock menu open'">
         {{ locked ? '🔒' : '🔓' }}
@@ -37,6 +42,12 @@ const expanded = computed(() => locked.value || hovered.value)
             <span class="nav-icon">🔌</span>
             <span class="nav-label">Adapters</span>
           </router-link>
+        </li>
+        <li v-if="!isMobileDevice">
+          <a @click.prevent="toggleViewMode" href="#" :title="'Switch to mobile view'">
+            <span class="nav-icon">📱</span>
+            <span class="nav-label">Mobile view</span>
+          </a>
         </li>
       </ul>
     </nav>
