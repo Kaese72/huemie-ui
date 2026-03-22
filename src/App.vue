@@ -1,17 +1,26 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useViewMode } from './composables/useViewMode.js'
-import MobileApp from './mobile/MobileApp.vue'
 
 const locked = ref(false)
 const hovered = ref(false)
 const expanded = computed(() => locked.value || hovered.value)
 
-const { viewMode, isMobileDevice, toggleViewMode } = useViewMode()
+const { viewMode, isMobileDevice } = useViewMode()
+const router = useRouter()
+
+function toggleViewMode() {
+  if (viewMode.value === 'desktop') {
+    router.push({ name: 'MobileHome' })
+  } else {
+    router.push({ name: 'Home' })
+  }
+}
 </script>
 
 <template>
-  <MobileApp v-if="viewMode === 'mobile'" />
+  <router-view v-if="viewMode === 'mobile'" />
 
   <div v-else class="app-layout">
     <nav class="sidebar" :class="{ collapsed: !expanded }" @mouseenter="hovered = true" @mouseleave="hovered = false">
