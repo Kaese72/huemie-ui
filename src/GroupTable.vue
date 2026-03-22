@@ -7,7 +7,7 @@ const groups = ref([])
 const error = ref(null)
 const router = useRouter()
 const route = useRoute()
-const knownAttributes = ['name'] // Adjust as needed
+const knownAttributes = ['name', 'updated']
 
 onMounted(async () => {
   try {
