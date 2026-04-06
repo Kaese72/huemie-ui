@@ -8,6 +8,8 @@ import NotFound from './NotFound.vue';
 import DeviceDetail from './DeviceDetail.vue';
 import GroupDetail from './GroupDetail.vue'
 import AdapterDetail from './AdapterDetail.vue';
+import RuleTable from './RuleTable.vue';
+import RuleDetail from './RuleDetail.vue';
 import MobileApp from './mobile/MobileApp.vue';
 import MobileHome from './mobile/MobileHome.vue';
 import MobileGroupList from './mobile/MobileGroupList.vue';
@@ -35,6 +37,12 @@ const routes = [
     name: 'Adapters',
     component: AdapterTable,
     children: [{ path: ':id', name: 'AdapterDetail', component: AdapterDetail }]
+  },
+  {
+    path: '/rules',
+    name: 'Rules',
+    component: RuleTable,
+    children: [{ path: ':id', name: 'RuleDetail', component: RuleDetail }]
   },
   {
     path: '/mobile',
