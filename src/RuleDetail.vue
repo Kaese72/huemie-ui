@@ -186,6 +186,10 @@ async function deleteAction(action) {
         <label class="field-label">Enabled</label>
         <input v-model="editEnabled" type="checkbox" class="enabled-check" />
       </div>
+      <div class="field-row">
+        <label class="field-label">Next run</label>
+        <span class="field-value">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString() : '—' }}</span>
+      </div>
     </section>
 
     <!-- ── Condition tree ── -->
@@ -335,6 +339,10 @@ async function deleteAction(action) {
   width: 18px;
   height: 18px;
   cursor: pointer;
+}
+.field-value {
+  color: #555;
+  font-size: 0.9rem;
 }
 .tree-container {
   border: 1px solid #e0e0e0;
