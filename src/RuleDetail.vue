@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import ConditionNode from './components/ConditionNode.vue'
+import { localTimezone } from './composables/useTimezones.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -65,7 +66,7 @@ function applyRule(data) {
 }
 
 function addRootCondition() {
-  editConditionTree.value = { condition: { type: 'time-range', from: '06:00:00', to: '22:00:00' }, and: null, or: null }
+  editConditionTree.value = { condition: { type: 'time-range', from: '06:00:00', to: '22:00:00', timezone: localTimezone.value }, and: null, or: null }
 }
 
 function removeRootCondition() {
@@ -187,8 +188,8 @@ async function deleteAction(action) {
         <input v-model="editEnabled" type="checkbox" class="enabled-check" />
       </div>
       <div class="field-row">
-        <label class="field-label">Next run</label>
-        <span class="field-value">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString() : '—' }}</span>
+        <label class="field-label">Next occurrence</label>
+        <span class="field-value">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</span>
       </div>
     </section>
 
@@ -224,7 +225,7 @@ async function deleteAction(action) {
       <span v-if="evalResult !== null" class="eval-result" :class="evalResult.result ? 'eval-true' : 'eval-false'">
         {{ evalResult.result ? '✓ true' : '✗ false' }}
         <span v-if="!evalResult.result && evalResult.reason" class="eval-reason">— {{ evalResult.reason }}</span>
-        <span v-if="evalResult['next-occurrence']" class="eval-next">· next: {{ new Date(evalResult['next-occurrence']).toLocaleString() }}</span>
+        <span v-if="evalResult['next-occurrence']" class="eval-next">· next: {{ new Date(evalResult['next-occurrence']).toLocaleString(undefined, { timeZoneName: 'short' }) }}</span>
       </span>
     </div>
 

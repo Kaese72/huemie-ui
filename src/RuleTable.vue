@@ -78,7 +78,7 @@ function onRuleDeleted(id) {
           <div class="cell cell-name">{{ rule.name }}</div>
           <div class="cell cell-enabled">{{ rule.enabled ? '✓' : '—' }}</div>
           <div class="cell cell-count">{{ rule.actions?.length ?? 0 }}</div>
-          <div class="cell cell-next">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString() : '—' }}</div>
+          <div class="cell cell-next">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</div>
         </div>
       </div>
       <div v-else-if="!error" class="empty">
@@ -167,7 +167,8 @@ function onRuleDeleted(id) {
 .cell-name    { flex: 1; min-width: 0; }
 .cell-enabled { width: 72px;  flex-shrink: 0; text-align: center; }
 .cell-count   { width: 72px;  flex-shrink: 0; text-align: center; }
-.cell-next    { width: 160px; flex-shrink: 0; color: #777; font-size: 0.85rem; }
+.cell-next    { width: 200px; flex-shrink: 0; }
+.table-row .cell-next { color: #777; font-size: 0.85rem; }
 .empty {
   padding: 2rem 1rem;
   color: #999;

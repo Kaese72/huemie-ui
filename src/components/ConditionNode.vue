@@ -7,6 +7,10 @@ const props = defineProps({
 })
 const emit = defineEmits(['update', 'remove'])
 
+import { useTimezones, localTimezone } from '../composables/useTimezones.js'
+
+const allTimezones = useTimezones()
+
 function update(changes) {
   emit('update', { ...props.node, ...changes })
 }
@@ -20,6 +24,7 @@ function changeType(newType) {
   if (newType === 'time-range') {
     condition.from = '06:00:00'
     condition.to = '22:00:00'
+    condition.timezone = localTimezone.value
   } else if (newType === 'device-id-attribute-boolean-eq') {
     condition.id = 1
     condition.attribute = 'active'
@@ -28,7 +33,7 @@ function changeType(newType) {
   update({ condition })
 }
 
-const newNode = () => ({ condition: { type: 'time-range', from: '06:00:00', to: '22:00:00' }, and: null, or: null })
+const newNode = () => ({ condition: { type: 'time-range', from: '06:00:00', to: '22:00:00', timezone: localTimezone.value }, and: null, or: null })
 
 function addAnd() { update({ and: newNode() }) }
 function addOr()  { update({ or:  newNode() }) }
@@ -57,6 +62,15 @@ function removeOr()   { update({ or:  null }) }
           :value="node.condition.to"
           @change="updateCondition({ to: $event.target.value })"
           class="time-input" />
+        <span class="field-label">TZ</span>
+        <select
+          @change="updateCondition({ timezone: $event.target.value })"
+          class="tz-select">
+          <option
+            v-for="tz in allTimezones" :key="tz" :value="tz"
+            :selected="(node.condition.timezone || localTimezone) === tz"
+          >{{ tz }}</option>
+        </select>
       </template>
 
       <template v-else-if="node.condition.type === 'device-id-attribute-boolean-eq'">
@@ -148,6 +162,13 @@ function removeOr()   { update({ or:  null }) }
   padding: 2px 4px;
   border-radius: 3px;
   border: 1px solid #ccc;
+}
+.tz-select {
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  max-width: 180px;
 }
 .field-label {
   font-size: 0.8rem;
