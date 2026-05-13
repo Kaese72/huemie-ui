@@ -1,9 +1,10 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, provide, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import ConditionNode from './components/ConditionNode.vue'
 import { localTimezone } from './composables/useTimezones.js'
+import { useConditionDrag, applySwap, applyMoveToSlot } from './composables/useConditionDrag.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +18,133 @@ const saving = ref(false)
 const editName = ref('')
 const editEnabled = ref(false)
 const editConditionTree = ref(null)
+
+// ── Undo history (resets on save) ────────────────────────────────────────────
+const undoStack = ref([])
+
+// Sentinel used instead of null so we can distinguish "no snapshot" from "snapshot is null tree"
+const SNAP_EMPTY = Symbol()
+let historySnapshot = SNAP_EMPTY   // state captured at the START of the current edit batch
+let historyTimer = null
+let skipNextHistory = false        // set before programmatic tree assignments to suppress the watcher
+
+// Called before any programmatic tree change that already handles history itself.
+function suppressNextHistory() {
+  skipNextHistory = true
+}
+
+// Flush any pending debounced snapshot immediately (used before drag-drop commits).
+function flushHistorySnapshot() {
+  clearTimeout(historyTimer)
+  if (historySnapshot !== SNAP_EMPTY) {
+    undoStack.value.push(historySnapshot)
+    historySnapshot = SNAP_EMPTY
+  }
+}
+
+function undo() {
+  clearTimeout(historyTimer)
+  // If there are uncommitted (debounced) edits, roll back to before those first.
+  if (historySnapshot !== SNAP_EMPTY) {
+    const target = historySnapshot
+    historySnapshot = SNAP_EMPTY
+    suppressNextHistory()
+    editConditionTree.value = target
+    return
+  }
+  if (undoStack.value.length === 0) return
+  suppressNextHistory()
+  editConditionTree.value = undoStack.value.pop()
+}
+
+function onKeydown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault()
+    undo()
+  }
+}
+
+// Watch every change to the tree. Debounce so rapid keystrokes are one undo step.
+watch(editConditionTree, (newVal, oldVal) => {
+  if (skipNextHistory) {
+    skipNextHistory = false
+    return
+  }
+  // Capture the state at the beginning of an edit batch (before any changes).
+  if (historySnapshot === SNAP_EMPTY) {
+    historySnapshot = oldVal !== null ? JSON.parse(JSON.stringify(oldVal)) : null
+  }
+  clearTimeout(historyTimer)
+  historyTimer = setTimeout(() => {
+    undoStack.value.push(historySnapshot)
+    historySnapshot = SNAP_EMPTY
+  }, 400)
+})
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+const dragCtx = useConditionDrag()
+
+function onDragStart(path, rect) {
+  dragCtx.startDrag(path, rect)
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'grabbing'
+
+  function onMouseMove(e) {
+    dragCtx.updateMouse(e.clientX, e.clientY)
+  }
+  function onMouseUp() {
+    dragCtx.endDrag()
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function commitDrop(targetPath, action) {
+  if (!dragCtx.sourcePath.value) return
+  const src = dragCtx.sourcePath.value
+  let newTree
+  if (action === 'swap') {
+    newTree = applySwap(editConditionTree.value, src, targetPath)
+  } else if (action === 'and') {
+    newTree = applyMoveToSlot(editConditionTree.value, src, targetPath, 'and')
+  } else if (action === 'or') {
+    newTree = applyMoveToSlot(editConditionTree.value, src, targetPath, 'or')
+  }
+  if (newTree) {
+    flushHistorySnapshot()  // commit any pending debounced edits first
+    undoStack.value.push(JSON.parse(JSON.stringify(editConditionTree.value)))
+    suppressNextHistory()
+    editConditionTree.value = newTree
+  }
+  dragCtx.endDrag()
+  document.body.style.userSelect = ''
+  document.body.style.cursor = ''
+}
+
+// Arrow overlay: source center → current mouse position
+const arrowVisible = computed(() => dragCtx.isDragging.value && dragCtx.sourceRect.value)
+const arrowX1 = computed(() => (dragCtx.sourceRect.value?.left ?? 0) + (dragCtx.sourceRect.value?.width ?? 0) / 2)
+const arrowY1 = computed(() => (dragCtx.sourceRect.value?.top ?? 0) + (dragCtx.sourceRect.value?.height ?? 0) / 2)
+const arrowX2 = computed(() => dragCtx.mouseX.value)
+const arrowY2 = computed(() => dragCtx.mouseY.value)
+
+provide('conditionDrag', {
+  isDragging:        dragCtx.isDragging,
+  sourcePath:        dragCtx.sourcePath,
+  hoveredTargetPath: dragCtx.hoveredTargetPath,
+  hoveredAction:     dragCtx.hoveredAction,
+  setHover:          dragCtx.setHover,
+  clearHover:        dragCtx.clearHover,
+  isSource:          dragCtx.isSource,
+  isDescendantOfSource: dragCtx.isDescendantOfSource,
+  isAncestorOfSource:   dragCtx.isAncestorOfSource,
+  onDragStart,
+  commitDrop,
+})
 
 // Evaluate state
 const evaluating = ref(false)
@@ -41,7 +169,14 @@ const actions = ref([])
 const showActionForm = ref(false)
 const editingAction = ref(null) // { actionId, type, id, capability, args }
 
-onMounted(fetchRule)
+onMounted(() => {
+  fetchRule()
+  window.addEventListener('keydown', onKeydown)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  clearTimeout(historyTimer)
+})
 watch(() => route.params.id, fetchRule)
 
 async function fetchRule() {
@@ -59,6 +194,10 @@ function applyRule(data) {
   rule.value = data
   editName.value = data.name
   editEnabled.value = data.enabled
+  clearTimeout(historyTimer)
+  historySnapshot = SNAP_EMPTY
+  undoStack.value = []
+  suppressNextHistory()
   editConditionTree.value = data['condition-tree']
     ? JSON.parse(JSON.stringify(data['condition-tree']))
     : null
@@ -208,6 +347,7 @@ async function deleteAction(action) {
         <ConditionNode
           :node="editConditionTree"
           :isRoot="true"
+          :path="[]"
           @update="editConditionTree = $event"
         />
       </div>
@@ -291,6 +431,28 @@ async function deleteAction(action) {
     </section>
 
   </div>
+
+  <!-- Drag arrow overlay — teleported to body so it renders above everything -->
+  <Teleport to="body">
+    <svg
+      v-if="arrowVisible"
+      class="drag-arrow-svg"
+    >
+      <defs>
+        <marker id="da-head" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#42b983" />
+        </marker>
+      </defs>
+      <line
+        :x1="arrowX1" :y1="arrowY1"
+        :x2="arrowX2" :y2="arrowY2"
+        stroke="#42b983"
+        stroke-width="2"
+        stroke-dasharray="6 3"
+        marker-end="url(#da-head)"
+      />
+    </svg>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -421,6 +583,17 @@ async function deleteAction(action) {
 .form-buttons { display: flex; gap: 8px; }
 .error { color: #c62828; margin-bottom: 1rem; }
 .loading { color: #999; }
+
+/* Drag arrow — fixed, full-viewport, non-interactive */
+:global(.drag-arrow-svg) {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: visible;
+}
 
 /* Buttons */
 .btn-primary {
