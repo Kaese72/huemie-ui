@@ -8,6 +8,10 @@ const error = ref(null)
 const router = useRouter()
 const route = useRoute()
 
+function isCooldownActive(rule) {
+  return rule['cooldown-until'] && new Date(rule['cooldown-until']) > new Date()
+}
+
 const selectedId = computed(() => route.params.id)
 
 onMounted(async () => {
@@ -66,6 +70,7 @@ function onRuleDeleted(id) {
           <div class="cell cell-name">Name</div>
           <div class="cell cell-enabled">Enabled</div>
           <div class="cell cell-count">Actions</div>
+          <div class="cell cell-backoff">Cooldown</div>
           <div class="cell cell-next">Next occurrence</div>
         </div>
         <div
@@ -78,6 +83,9 @@ function onRuleDeleted(id) {
           <div class="cell cell-name">{{ rule.name }}</div>
           <div class="cell cell-enabled">{{ rule.enabled ? '✓' : '—' }}</div>
           <div class="cell cell-count">{{ rule.actions?.length ?? 0 }}</div>
+          <div class="cell cell-backoff" :class="{ 'backoff-active': isCooldownActive(rule) }">
+            {{ isCooldownActive(rule) ? new Date(rule['cooldown-until']).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '—' }}
+          </div>
           <div class="cell cell-next">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</div>
         </div>
       </div>
@@ -167,7 +175,10 @@ function onRuleDeleted(id) {
 .cell-name    { flex: 1; min-width: 0; }
 .cell-enabled { width: 72px;  flex-shrink: 0; text-align: center; }
 .cell-count   { width: 72px;  flex-shrink: 0; text-align: center; }
+.cell-backoff { width: 72px;  flex-shrink: 0; text-align: center; }
 .cell-next    { width: 200px; flex-shrink: 0; }
+.table-row .cell-backoff { color: #777; font-size: 0.85rem; }
+.table-row .cell-backoff.backoff-active { color: #e65100; font-weight: 500; }
 .table-row .cell-next { color: #777; font-size: 0.85rem; }
 .empty {
   padding: 2rem 1rem;

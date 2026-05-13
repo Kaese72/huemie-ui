@@ -330,6 +330,12 @@ async function deleteAction(action) {
         <label class="field-label">Next occurrence</label>
         <span class="field-value">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</span>
       </div>
+      <div v-if="rule['cooldown-until']" class="field-row">
+        <label class="field-label">Cooldown until</label>
+        <span class="field-value" :class="{ 'cooldown-active': new Date(rule['cooldown-until']) > new Date() }">
+          {{ new Date(rule['cooldown-until']).toLocaleString(undefined, { timeZoneName: 'short' }) }}
+        </span>
+      </div>
     </section>
 
     <!-- ── Condition tree ── -->
@@ -485,7 +491,7 @@ async function deleteAction(action) {
   margin-bottom: 0.5rem;
 }
 .field-label {
-  width: 72px;
+  width: 120px;
   font-weight: 500;
   color: #444;
   flex-shrink: 0;
@@ -506,6 +512,10 @@ async function deleteAction(action) {
 .field-value {
   color: #555;
   font-size: 0.9rem;
+}
+.cooldown-active {
+  color: #e65100;
+  font-weight: 500;
 }
 .tree-container {
   border: 1px solid #e0e0e0;

@@ -74,8 +74,15 @@ const textTypes = new Set([
   'device-id-attribute-text-substring',
 ])
 
-const isNumberType = computed(() => numberTypes.has(props.node.condition.type))
-const isTextType   = computed(() => textTypes.has(props.node.condition.type))
+const deviceTypes = new Set([
+  'device-id-attribute-boolean-eq',
+  ...numberTypes,
+  ...textTypes,
+])
+
+const isNumberType  = computed(() => numberTypes.has(props.node.condition.type))
+const isTextType    = computed(() => textTypes.has(props.node.condition.type))
+const isDeviceType  = computed(() => deviceTypes.has(props.node.condition.type))
 
 // ── Tree update helpers ───────────────────────────────────────────────────────
 
@@ -286,6 +293,15 @@ function removeOr()   { update({ or:  null }) }
             class="text-value-input" />
         </template>
 
+        <template v-if="isDeviceType">
+          <span class="field-label">cooldown</span>
+          <input type="number" min="0" placeholder="none"
+            :value="node.condition['cooldown-seconds'] ?? ''"
+            @input="updateCondition({ 'cooldown-seconds': parseInt($event.target.value) > 0 ? parseInt($event.target.value) : undefined })"
+            class="cooldown-input" />
+          <span class="field-label">s</span>
+        </template>
+
         <div class="node-buttons">
           <button @click="addAnd" :disabled="!!node.and" class="btn-rel">+ AND</button>
           <button @click="addOr"  :disabled="!!node.or"  class="btn-rel">+ OR</button>
@@ -455,6 +471,13 @@ function removeOr()   { update({ or:  null }) }
 }
 .text-value-input {
   width: 140px;
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+}
+.cooldown-input {
+  width: 60px;
   font-size: 0.85rem;
   padding: 2px 4px;
   border-radius: 3px;
