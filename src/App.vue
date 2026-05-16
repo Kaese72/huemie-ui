@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useViewMode } from './composables/useViewMode.js'
 
 const locked = ref(false)
@@ -9,6 +9,9 @@ const expanded = computed(() => locked.value || hovered.value)
 
 const { viewMode, isMobileDevice } = useViewMode()
 const router = useRouter()
+const route = useRoute()
+
+const isPublicRoute = computed(() => route.meta.public === true)
 
 function toggleViewMode() {
   if (viewMode.value === 'desktop') {
@@ -20,7 +23,8 @@ function toggleViewMode() {
 </script>
 
 <template>
-  <router-view v-if="viewMode === 'mobile'" />
+  <!-- Public routes (login, setup) render full-page without the app shell -->
+  <router-view v-if="isPublicRoute || viewMode === 'mobile'" />
 
   <div v-else class="app-layout">
     <nav class="sidebar" :class="{ collapsed: !expanded }" @mouseenter="hovered = true" @mouseleave="hovered = false">

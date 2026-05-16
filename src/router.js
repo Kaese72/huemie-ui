@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { isMobileDevice } from './composables/useViewMode.js'
+import { useAuth } from './composables/useAuth.js'
 import Home from './Home.vue';
 import DeviceTable from './DeviceTable.vue';
 import GroupTable from './GroupTable.vue'
@@ -16,8 +17,12 @@ import MobileGroupList from './mobile/MobileGroupList.vue';
 import MobileGroupDetail from './mobile/MobileGroupDetail.vue';
 import MobileDeviceList from './mobile/MobileDeviceList.vue';
 import MobileDeviceDetail from './mobile/MobileDeviceDetail.vue';
+import Login from './Login.vue';
+import Setup from './Setup.vue';
 
 const routes = [
+  { path: '/login', name: 'Login', component: Login, meta: { public: true } },
+  { path: '/setup', name: 'Setup', component: Setup, meta: { public: true } },
   { path: '/', redirect: '/home' },
   { path: '/home', name: 'Home', component: Home },
   {
@@ -63,7 +68,23 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
+  const { isAuthenticated, isInitialized, init } = useAuth()
+
+  // Attempt cookie-based token refresh on first navigation
+  if (!isInitialized.value) {
+    await init()
+  }
+
+  // Public routes are always accessible
+  if (to.meta.public) return
+
+  // Require authentication for all other routes
+  if (!isAuthenticated.value) {
+    return { name: 'Login' }
+  }
+
+  // Redirect mobile devices to mobile views
   if (isMobileDevice && !to.path.startsWith('/mobile')) {
     return { name: 'MobileHome' }
   }
