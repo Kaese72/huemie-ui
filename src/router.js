@@ -11,6 +11,7 @@ import GroupDetail from './GroupDetail.vue'
 import AdapterDetail from './AdapterDetail.vue';
 import RuleTable from './RuleTable.vue';
 import RuleDetail from './RuleDetail.vue';
+import UserTable from './UserTable.vue';
 import MobileApp from './mobile/MobileApp.vue';
 import MobileHome from './mobile/MobileHome.vue';
 import MobileGroupList from './mobile/MobileGroupList.vue';
@@ -49,6 +50,7 @@ const routes = [
     component: RuleTable,
     children: [{ path: ':id', name: 'RuleDetail', component: RuleDetail }]
   },
+  { path: '/users', name: 'Users', component: UserTable },
   {
     path: '/mobile',
     component: MobileApp,
