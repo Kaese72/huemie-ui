@@ -4,8 +4,11 @@ import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 import { extractAttribute, extractAttributeUpdated } from './utils/deviceUtil.js'
+import { useAuth } from './composables/useAuth.js'
 
-let eventSource = null;
+const { useToken } = useAuth()
+
+let sseAbortController = null;
 let reconnectTimeout = null;
 const devices = ref([])
 const error = ref(null)
@@ -27,6 +30,93 @@ function onDeviceForgotten(event) {
   devices.value = devices.value.filter(device => device.id !== forgottenId)
 }
 
+function handleSSEEvent(type, data) {
+  if (type !== 'update') return;
+  try {
+    const parsed = JSON.parse(data);
+    if (parsed['device-id'] && Array.isArray(parsed.attributes)) {
+      const idx = devices.value.findIndex(d => d.id == parsed['device-id']);
+      if (idx !== -1) {
+        const updatedDevice = { ...devices.value[idx] };
+        let latestAttributeUpdated = updatedDevice.updated || null;
+        updatedDevice.attributes = updatedDevice.attributes.map(attr => {
+          const update = parsed.attributes.find(a => a.name === attr.name);
+          if (update?.updated && (!latestAttributeUpdated || update.updated > latestAttributeUpdated)) {
+            latestAttributeUpdated = update.updated;
+          }
+          return update ? { ...attr, ...update } : attr;
+        });
+        parsed.attributes.forEach(update => {
+          if (update?.updated && (!latestAttributeUpdated || update.updated > latestAttributeUpdated)) {
+            latestAttributeUpdated = update.updated;
+          }
+          if (!updatedDevice.attributes.find(attr => attr.name === update.name)) {
+            updatedDevice.attributes.push(update);
+          }
+        });
+        if (latestAttributeUpdated) {
+          updatedDevice.updated = latestAttributeUpdated;
+        }
+        devices.value.splice(idx, 1, updatedDevice);
+      }
+    }
+  } catch (e) {
+    console.log('Error parsing SSE data:', e);
+  }
+}
+
+// EventSource cannot send headers, so we use fetch with a ReadableStream instead.
+async function connectSSE() {
+  console.log('Connecting to SSE...');
+  if (sseAbortController) {
+    sseAbortController.abort();
+    sseAbortController = null;
+  }
+  sseAbortController = new AbortController();
+  try {
+    const response = await fetch('/device-store/v0/devices/events', {
+      headers: {
+        'Authorization': `Bearer ${useToken.value}`,
+        'Accept': 'text/event-stream',
+      },
+      signal: sseAbortController.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`SSE connection failed with status ${response.status}`);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete trailing line
+      let currentType = 'message';
+      let currentDataLines = [];
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          currentType = line.slice(6).trim();
+        } else if (line.startsWith('data:')) {
+          currentDataLines.push(line.slice(5).trim());
+        } else if (line === '') {
+          if (currentDataLines.length > 0) {
+            handleSSEEvent(currentType, currentDataLines.join('\n'));
+          }
+          currentType = 'message';
+          currentDataLines = [];
+        }
+      }
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.log('SSE error, attempting to reconnect...', err);
+    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    reconnectTimeout = setTimeout(connectSSE, 2000);
+  }
+}
+
 onMounted(async () => {
   try {
     const response = await axios.get('/device-store/v0/devices')
@@ -35,71 +125,14 @@ onMounted(async () => {
     error.value = err
   }
 
-  // Open Server-Sent Events (SSE) for device events
-  function connectSSE() {
-    console.log('Connecting to SSE...');
-    if (eventSource) {
-      eventSource.close();
-      eventSource = null;
-    }
-    eventSource = new EventSource('/device-store/v0/devices/events');
-    eventSource.addEventListener('update', (event) => {
-      console.log('SSE message received:', event.data);
-      try {
-        const data = JSON.parse(event.data);
-        if (data['device-id'] && Array.isArray(data.attributes)) {
-          // Find the device and update its attributes
-          const idx = devices.value.findIndex(d => d.id == data['device-id']);
-          if (idx !== -1) {
-            // Merge updated attributes into the device
-            const updatedDevice = { ...devices.value[idx] };
-            let latestAttributeUpdated = updatedDevice.updated || null;
-            updatedDevice.attributes = updatedDevice.attributes.map(attr => {
-              const update = data.attributes.find(a => a.name === attr.name);
-              if (update?.updated && (!latestAttributeUpdated || update.updated > latestAttributeUpdated)) {
-                latestAttributeUpdated = update.updated;
-              }
-              return update ? { ...attr, ...update } : attr;
-            });
-            // Add any new attributes from the update
-            data.attributes.forEach(update => {
-              if (update?.updated && (!latestAttributeUpdated || update.updated > latestAttributeUpdated)) {
-                latestAttributeUpdated = update.updated;
-              }
-              if (!updatedDevice.attributes.find(attr => attr.name === update.name)) {
-                updatedDevice.attributes.push(update);
-              }
-            });
-            if (latestAttributeUpdated) {
-              updatedDevice.updated = latestAttributeUpdated;
-            }
-            devices.value.splice(idx, 1, updatedDevice);
-          }
-        }
-      } catch (e) {
-        // Ignore parse errors
-        console.log('Error parsing SSE data:', e);
-      }
-    });
-    eventSource.onerror = (event) => {
-      // Close and reconnect after a delay (e.g., 2 seconds)
-      console.log('SSE error, attempting to reconnect...', event);
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
-      }
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      reconnectTimeout = setTimeout(connectSSE, 2000);
-    };
-  }
   connectSSE();
 
   window.addEventListener('device-forgotten', onDeviceForgotten)
 });
 onBeforeUnmount(() => {
-  if (eventSource) {
-    eventSource.close();
-    eventSource = null;
+  if (sseAbortController) {
+    sseAbortController.abort();
+    sseAbortController = null;
   }
   if (reconnectTimeout) {
     clearTimeout(reconnectTimeout);
