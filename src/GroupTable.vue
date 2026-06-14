@@ -33,7 +33,7 @@ function onRowClick(group) {
   if (selectedId.value == group.id) {
     router.push({ name: 'Groups' })
   } else {
-    router.push({ name: 'GroupDetail', params: { id: group.id } })
+    router.push({ name: 'GroupDetail', params: { id: group.id, tab: 'state' } })
   }
 }
 

@@ -160,7 +160,7 @@ function onRowClick(device) {
     // If already selected, close detail view
     router.push({ name: 'Devices' });
   } else {
-    router.push({ name: 'DeviceDetail', params: { id: device.id } });
+    router.push({ name: 'DeviceDetail', params: { id: device.id, tab: 'state' } });
   }
 }
 

@@ -1,6 +1,6 @@
 <script setup>
 
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import CapabilityDialog from './components/CapabilityDialog.vue'
@@ -11,20 +11,30 @@ const device = ref(null)
 const error = ref(null)
 const showDialog = ref(false)
 const selectedCapability = ref(null)
+const triggerAudits = ref([])
+const activeTab = computed(() => route.params.tab)
 
 onMounted(fetchDevice)
 watch(() => route.params.id, fetchDevice)
+watch(activeTab, (tab) => {
+  if (tab === 'history' && triggerAudits.value.length === 0) refreshAudits()
+})
 
 async function fetchDevice() {
   if (!route.params.id) return
   try {
     const response = await axios.get(`/device-store/v0/devices/${route.params.id}`)
     device.value = response.data
+    triggerAudits.value = []
     error.value = null
   } catch (err) {
     error.value = err
     device.value = null
   }
+}
+
+function selectTab(tab) {
+  router.push({ name: 'DeviceDetail', params: { id: route.params.id, tab } })
 }
 
 function openCapabilityDialog(capability) {
@@ -37,23 +47,31 @@ function closeDialog() {
   selectedCapability.value = null
 }
 
+async function refreshAudits() {
+  if (!route.params.id) return
+  try {
+    const response = await axios.get(`/device-store/v0/devices/${route.params.id}/capability-trigger-audits`)
+    triggerAudits.value = response.data || []
+  } catch (err) {
+    console.error('Error fetching trigger audits:', err)
+  }
+}
+
 function triggerCapability(argumentValues) {
   if (!device.value || !selectedCapability.value) return;
-  
+
   axios.post(
     `/device-store/v0/devices/${device.value.id}/capabilities/${selectedCapability.value.name}`,
     argumentValues
   )
-    .then(response => {
+    .then(() => {
       closeDialog()
-      // Optionally show a success message
-      // e.g., alert('Capability triggered!');
+      if (activeTab.value === 'history') refreshAudits()
     })
-    .catch(error => {
-      // Optionally show an error message
-      console.error('Error triggering capability:', error)
-      // e.g., alert('Error triggering capability');
-    });
+    .catch(err => {
+      console.error('Error triggering capability:', err)
+      if (activeTab.value === 'history') refreshAudits()
+    })
 }
 
 function extractAttributeValue(attribute) {
@@ -94,53 +112,87 @@ async function forgetDevice() {
       <strong>Last updated:</strong> {{ device.updated || 'Unknown' }}
     </div>
 
-    <div v-if="device.attributes && device.attributes.length">
-      <h3>Attributes</h3>
-      <table class="data-table">
+    <div class="tabs">
+      <button class="tab" :class="{ active: activeTab === 'state' }" @click="selectTab('state')">State</button>
+      <button class="tab" :class="{ active: activeTab === 'history' }" @click="selectTab('history')">Trigger History</button>
+    </div>
+
+    <div v-if="activeTab === 'state'">
+      <div v-if="device.attributes && device.attributes.length">
+        <h3>Attributes</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Value</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="attribute in device.attributes" :key="attribute.name">
+              <td>{{ attribute.name }}</td>
+              <td>{{ extractAttributeValue(attribute) }}</td>
+              <td>{{ attribute.updated || 'Unknown' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="device.capabilities && device.capabilities.length">
+        <h3>Capabilities</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Updated</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="cap in device.capabilities" :key="cap.name">
+              <td>{{ cap.name }}</td>
+              <td>{{ cap.updated || 'Unknown' }}</td>
+              <td>
+                <button class="trigger-button" @click="openCapabilityDialog(cap)">
+                  Trigger {{ cap.name }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="activeTab === 'history'">
+      <div v-if="!triggerAudits.length" class="empty-state">No capability triggers recorded yet.</div>
+      <table v-else class="data-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Value</th>
-            <th>Updated</th>
+            <th>Capability</th>
+            <th>Time</th>
+            <th>Result</th>
+            <th>Arguments</th>
+            <th>Error</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="attribute in device.attributes" :key="attribute.name">
-            <td>{{ attribute.name }}</td>
-            <td>{{ extractAttributeValue(attribute) }}</td>
-            <td>{{ attribute.updated || 'Unknown' }}</td>
+          <tr v-for="audit in triggerAudits" :key="audit.id">
+            <td>{{ audit.name }}</td>
+            <td>{{ audit.timestamp }}</td>
+            <td :class="audit.success ? 'audit-success' : 'audit-failure'">
+              {{ audit.success ? 'Success' : 'Failed' }}
+            </td>
+            <td><code>{{ audit.arguments }}</code></td>
+            <td>{{ audit['error-message'] || '' }}</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div v-if="device.capabilities && device.capabilities.length">
-      <h3>Capabilities</h3>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Updated</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="cap in device.capabilities" :key="cap.name">
-            <td>{{ cap.name }}</td>
-            <td>{{ cap.updated || 'Unknown' }}</td>
-            <td>
-              <button class="trigger-button" @click="openCapabilityDialog(cap)">
-                Trigger {{ cap.name }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
     <div class="forget-section">
       <button class="forget-button" @click="forgetDevice">Forget device</button>
     </div>
-    
+
     <CapabilityDialog
       v-if="selectedCapability"
       :capability="selectedCapability"
@@ -155,6 +207,26 @@ async function forgetDevice() {
 <style scoped>
 .device-meta {
   margin-bottom: 1rem;
+}
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #ddd;
+}
+.tab {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.tab.active {
+  border-bottom-color: #42b983;
+  color: #42b983;
+  font-weight: bold;
 }
 .data-table {
   width: 100%;
@@ -196,5 +268,18 @@ async function forgetDevice() {
 }
 .forget-button:hover {
   background: #369870;
+}
+.audit-success {
+  color: #2a9d5c;
+  font-weight: bold;
+}
+.audit-failure {
+  color: #c0392b;
+  font-weight: bold;
+}
+.empty-state {
+  color: #888;
+  font-style: italic;
+  margin-bottom: 1rem;
 }
 </style>

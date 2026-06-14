@@ -30,13 +30,19 @@ const routes = [
     path: '/devices',
     name: 'Devices',
     component: DeviceTable,
-    children: [{ path: ':id', name: 'DeviceDetail', component: DeviceDetail }]
+    children: [
+      { path: ':id', redirect: to => ({ name: 'DeviceDetail', params: { id: to.params.id, tab: 'state' } }) },
+      { path: ':id/:tab', name: 'DeviceDetail', component: DeviceDetail },
+    ]
   },
   {
     path: '/groups',
     name: 'Groups',
     component: GroupTable,
-    children: [{ path: ':id', name: 'GroupDetail', component: GroupDetail }]
+    children: [
+      { path: ':id', redirect: to => ({ name: 'GroupDetail', params: { id: to.params.id, tab: 'state' } }) },
+      { path: ':id/:tab', name: 'GroupDetail', component: GroupDetail },
+    ]
   },
   {
     path: '/adapters',
