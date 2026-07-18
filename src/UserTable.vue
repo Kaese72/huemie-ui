@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useAuth } from './composables/useAuth.js'
+
+const { currentUserId } = useAuth()
 
 const users = ref([])
 const error = ref(null)
@@ -8,6 +11,11 @@ const showCreateDialog = ref(false)
 const creating = ref(false)
 const newUser = ref({ username: '', password: '' })
 const createError = ref(null)
+
+const showPasswordDialog = ref(false)
+const changingPassword = ref(false)
+const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
+const passwordError = ref(null)
 
 onMounted(async () => {
   try {
@@ -47,13 +55,46 @@ async function createUser() {
   }
 }
 
-async function deleteUser(username) {
+async function deleteUser(id, username) {
   if (!confirm(`Delete user "${username}"?`)) return
   try {
-    await axios.delete(`/authentication-service/v0/users/${encodeURIComponent(username)}`)
-    users.value = users.value.filter(u => u.username !== username)
+    await axios.delete(`/authentication-service/v0/users/${id}`)
+    users.value = users.value.filter(u => u.id !== id)
   } catch (err) {
     error.value = err
+  }
+}
+
+function openPasswordDialog() {
+  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  passwordError.value = null
+  showPasswordDialog.value = true
+}
+
+function closePasswordDialog() {
+  if (changingPassword.value) return
+  showPasswordDialog.value = false
+}
+
+async function changePassword() {
+  const { currentPassword, newPassword, confirmPassword } = passwordForm.value
+  if (!currentPassword || !newPassword || !confirmPassword) return
+  if (newPassword !== confirmPassword) {
+    passwordError.value = 'New passwords do not match.'
+    return
+  }
+  changingPassword.value = true
+  passwordError.value = null
+  try {
+    await axios.put('/authentication-service/v0/users/me/update-password', {
+      currentPassword,
+      newPassword,
+    })
+    showPasswordDialog.value = false
+  } catch (err) {
+    passwordError.value = err.response?.data?.detail ?? err.message
+  } finally {
+    changingPassword.value = false
   }
 }
 </script>
@@ -73,9 +114,19 @@ async function deleteUser(username) {
       </div>
       <div v-for="user in users" :key="user.id" class="table-row">
         <div class="cell cell-id">{{ user.id }}</div>
-        <div class="cell cell-username">{{ user.username }}</div>
+        <div class="cell cell-username">
+          {{ user.username }}
+          <span v-if="user.id === currentUserId" class="badge-you">YOU</span>
+        </div>
         <div class="cell cell-actions">
-          <button class="btn-delete" @click="deleteUser(user.username)">Delete</button>
+          <button
+            v-if="user.id === currentUserId"
+            class="btn-change-password"
+            @click="openPasswordDialog"
+          >
+            Change Password
+          </button>
+          <button class="btn-delete" @click="deleteUser(user.id, user.username)">Delete</button>
         </div>
       </div>
     </div>
@@ -114,6 +165,48 @@ async function deleteUser(username) {
             {{ creating ? 'Creating...' : 'Create' }}
           </button>
           <button class="dialog-cancel-button" :disabled="creating" @click="closeCreateDialog">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showPasswordDialog" class="dialog-backdrop" @click.self="closePasswordDialog">
+      <div class="dialog">
+        <h3>Change password</h3>
+        <input
+          v-model="passwordForm.currentPassword"
+          class="create-input"
+          type="password"
+          placeholder="Current password"
+          autocomplete="current-password"
+          :disabled="changingPassword"
+        />
+        <input
+          v-model="passwordForm.newPassword"
+          class="create-input"
+          type="password"
+          placeholder="New password"
+          autocomplete="new-password"
+          :disabled="changingPassword"
+        />
+        <input
+          v-model="passwordForm.confirmPassword"
+          class="create-input"
+          type="password"
+          placeholder="Confirm new password"
+          autocomplete="new-password"
+          :disabled="changingPassword"
+          @keyup.enter="changePassword"
+        />
+        <div v-if="passwordError" class="dialog-error">{{ passwordError }}</div>
+        <div class="dialog-actions">
+          <button
+            class="dialog-save-button"
+            :disabled="changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword"
+            @click="changePassword"
+          >
+            {{ changingPassword ? 'Saving...' : 'Save' }}
+          </button>
+          <button class="dialog-cancel-button" :disabled="changingPassword" @click="closePasswordDialog">Cancel</button>
         </div>
       </div>
     </div>
@@ -175,7 +268,17 @@ async function deleteUser(username) {
 }
 .cell-id       { width: 60px;  flex-shrink: 0; font-weight: bold; }
 .cell-username { flex: 1; min-width: 0; }
-.cell-actions  { width: 80px;  flex-shrink: 0; display: flex; justify-content: flex-end; }
+.cell-actions  { width: 200px; flex-shrink: 0; display: flex; justify-content: flex-end; gap: 0.5rem; }
+.badge-you {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  background: #1565c0;
+  color: #fff;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+}
 .btn-delete {
   padding: 0.25rem 0.6rem;
   background: #fff;
@@ -186,6 +289,16 @@ async function deleteUser(username) {
   font-size: 0.8rem;
 }
 .btn-delete:hover { background: #c62828; color: #fff; }
+.btn-change-password {
+  padding: 0.25rem 0.6rem;
+  background: #1565c0;
+  color: #fff;
+  border: 1px solid #1565c0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.btn-change-password:hover { background: #0d47a1; }
 .empty {
   padding: 2rem 1rem;
   color: #999;

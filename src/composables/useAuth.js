@@ -8,6 +8,26 @@ let initPromise = null
 
 const isAuthenticated = computed(() => useToken.value !== null)
 
+function decodeJwtPayload(token) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+        .join('')
+    )
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
+const currentUserId = computed(() => {
+  if (!useToken.value) return null
+  return decodeJwtPayload(useToken.value)?.id ?? null
+})
+
 const LOGIN_URL = '/authentication-service/v0/authentication/login'
 const REFRESH_INTERVAL_MS = 8 * 60 * 1000 // 8 min; use-token expires in 10 min
 
@@ -62,5 +82,5 @@ export function useAuth() {
     clearToken()
   }
 
-  return { useToken, isAuthenticated, isInitialized, init, login, logout }
+  return { useToken, isAuthenticated, isInitialized, currentUserId, init, login, logout }
 }
