@@ -7,6 +7,9 @@ const router = useRouter()
 
 const username = ref('')
 const password = ref('')
+const name = ref('')
+const surname = ref('')
+const email = ref('')
 const error = ref('')
 const loading = ref(false)
 const done = ref(false)
@@ -17,7 +20,10 @@ async function handleSubmit() {
   try {
     await axios.post('/authentication-service/v0/setup/user', {
       username: username.value,
-      password: password.value
+      password: password.value,
+      name: name.value,
+      surname: surname.value,
+      email: email.value || null
     })
     done.value = true
     setTimeout(() => router.push({ name: 'Login' }), 1500)
@@ -63,6 +69,38 @@ async function handleSubmit() {
             type="password"
             autocomplete="new-password"
             required
+            :disabled="loading"
+          />
+        </div>
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input
+            id="name"
+            v-model="name"
+            type="text"
+            autocomplete="given-name"
+            required
+            :disabled="loading"
+          />
+        </div>
+        <div class="form-group">
+          <label for="surname">Surname</label>
+          <input
+            id="surname"
+            v-model="surname"
+            type="text"
+            autocomplete="family-name"
+            required
+            :disabled="loading"
+          />
+        </div>
+        <div class="form-group">
+          <label for="email">Email (optional)</label>
+          <input
+            id="email"
+            v-model="email"
+            type="email"
+            autocomplete="email"
             :disabled="loading"
           />
         </div>
