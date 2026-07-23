@@ -3,9 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useViewMode } from './composables/useViewMode.js'
 
-const locked = ref(false)
 const hovered = ref(false)
-const expanded = computed(() => locked.value || hovered.value)
 
 const { viewMode, isMobileDevice } = useViewMode()
 const router = useRouter()
@@ -27,10 +25,7 @@ function toggleViewMode() {
   <router-view v-if="isPublicRoute || viewMode === 'mobile'" />
 
   <div v-else class="app-layout">
-    <nav class="sidebar" :class="{ collapsed: !expanded }" @mouseenter="hovered = true" @mouseleave="hovered = false">
-      <button class="collapse-btn" :style="{ visibility: expanded ? 'visible' : 'hidden' }" @click="locked = !locked" :title="locked ? 'Unlock menu' : 'Lock menu open'">
-        {{ locked ? '🔒' : '🔓' }}
-      </button>
+    <nav class="sidebar" :class="{ collapsed: !hovered }" @mouseenter="hovered = true" @mouseleave="hovered = false">
       <ul>
         <li>
           <router-link to="/home">
@@ -85,11 +80,16 @@ function toggleViewMode() {
 <style scoped>
 .app-layout {
   display: flex;
+  position: relative;
   height: 100vh;
   min-height: 0;
 }
 .sidebar {
-  width: 200px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  width: 48px;
   background: #222e3a;
   color: #fff;
   padding: 1.5rem 0 1.5rem 0;
@@ -101,27 +101,10 @@ function toggleViewMode() {
   flex-shrink: 0;
   transition: width 0.25s ease;
   overflow: hidden;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
 }
-.sidebar.collapsed {
-  width: 48px;
-}
-.collapse-btn {
-  align-self: flex-end;
-  margin-right: 8px;
-  margin-bottom: 0.5rem;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
-  line-height: 1;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-.collapse-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+.sidebar:not(.collapsed) {
+  width: 200px;
 }
 .sidebar ul {
   list-style: none;
@@ -161,6 +144,7 @@ function toggleViewMode() {
 }
 .main-content {
   flex: 1;
+  margin-left: 48px;
   padding: 1.5rem;
   background: #f7f9fa;
   overflow-y: hidden;
