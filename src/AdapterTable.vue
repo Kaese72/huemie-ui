@@ -77,14 +77,14 @@ const selectedId = computed(() => route.params.id)
 </script>
 
 <template>
-  <div class="adapter-split-layout">
-    <div class="adapter-table" :class="{ 'half': selectedId }">
-      <div class="title-row">
-        <h1>Adapters</h1>
-        <button class="create-button" @click="openCreateDialog">Create</button>
-      </div>
-      <div v-if="error">Error: {{ error.message }}</div>
-      <div class="table-wrapper">
+  <div class="adapter-table">
+    <div class="title-row">
+      <h1>Adapters</h1>
+      <button class="create-button" @click="openCreateDialog">Create</button>
+    </div>
+    <div v-if="error">Error: {{ error.message }}</div>
+    <div class="split-content">
+      <div class="table-wrapper" :class="{ half: selectedId }">
         <div class="table-header">
           <div class="table-cell id-cell">ID</div>
           <div class="table-cell name-cell">Name</div>
@@ -100,10 +100,11 @@ const selectedId = computed(() => route.params.id)
           <div class="table-cell" :title="adapter.synced || 'Not synced'">{{ adapter.synced || 'Not synced' }}</div>
         </div>
       </div>
+      <div v-if="selectedId" class="adapter-detail-half">
+        <router-view />
+      </div>
     </div>
-    <div v-if="selectedId" class="adapter-detail-half">
-      <router-view />
-    </div>
+    <div class="pagination-footer"></div>
 
     <div v-if="showCreateDialog" class="dialog-backdrop">
       <div class="dialog">
@@ -142,26 +143,27 @@ const selectedId = computed(() => route.params.id)
 </template>
 
 <style scoped>
-.adapter-split-layout {
-  display: flex;
+.adapter-table {
   width: 100%;
   height: 100%;
   min-height: 0;
-}
-.adapter-table {
-  flex: 1 1 0;
-  min-width: 0;
-  transition: flex 0.3s;
   position: relative;
-  height: 100%;
-  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
-.adapter-table.half {
-  flex: 1;
-  max-width: 50%;
+.split-content {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+/* Reserved for future pagination controls; adapter-attendant doesn't paginate adapters yet. */
+.pagination-footer {
+  flex: 0 0 auto;
+  height: 44px;
+  border-top: 2px solid #ddd;
+  background: #f5f5f5;
 }
 .title-row {
   display: flex;
@@ -260,9 +262,15 @@ const selectedId = computed(() => route.params.id)
   width: 100%;
   height: 100%;
   flex: 1 1 0;
+  min-width: 0;
+  transition: flex 0.3s;
   overflow-x: auto;
   overflow-y: auto;
   box-sizing: border-box;
+}
+.table-wrapper.half {
+  flex: 1;
+  max-width: 50%;
 }
 .table-header, .table-row {
   display: flex;

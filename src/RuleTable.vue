@@ -57,56 +57,67 @@ function onRuleDeleted(id) {
 </script>
 
 <template>
-  <div class="split-layout">
-    <div class="list-pane" :class="{ half: selectedId }">
-      <div class="pane-header">
-        <h1>Rules</h1>
-        <button class="btn-create" @click="createRule">+ New rule</button>
-      </div>
-      <div v-if="error" class="error">Error: {{ error.message }}</div>
-      <div v-if="rules.length > 0" class="table-wrapper">
-        <div class="table-header">
-          <div class="cell cell-id">ID</div>
-          <div class="cell cell-name">Name</div>
-          <div class="cell cell-enabled">Enabled</div>
-          <div class="cell cell-count">Actions</div>
-          <div class="cell cell-backoff">Cooldown</div>
-          <div class="cell cell-next">Next occurrence</div>
-        </div>
-        <div
-          v-for="rule in rules" :key="rule.id"
-          class="table-row"
-          :class="{ selected: rule.id == selectedId }"
-          @click="onRowClick(rule)"
-        >
-          <div class="cell cell-id">{{ rule.id }}</div>
-          <div class="cell cell-name">{{ rule.name }}</div>
-          <div class="cell cell-enabled">{{ rule.enabled ? '✓' : '—' }}</div>
-          <div class="cell cell-count">{{ rule.actions?.length ?? 0 }}</div>
-          <div class="cell cell-backoff" :class="{ 'backoff-active': isCooldownActive(rule) }">
-            {{ isCooldownActive(rule) ? new Date(rule['cooldown-until']).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '—' }}
+  <div class="rule-view">
+    <div class="pane-header">
+      <h1>Rules</h1>
+      <button class="btn-create" @click="createRule">+ New rule</button>
+    </div>
+    <div v-if="error" class="error">Error: {{ error.message }}</div>
+    <div class="split-content">
+      <div class="list-pane" :class="{ half: selectedId }">
+        <div v-if="rules.length > 0" class="table-wrapper">
+          <div class="table-header">
+            <div class="cell cell-id">ID</div>
+            <div class="cell cell-name">Name</div>
+            <div class="cell cell-enabled">Enabled</div>
+            <div class="cell cell-count">Actions</div>
+            <div class="cell cell-backoff">Cooldown</div>
+            <div class="cell cell-next">Next occurrence</div>
           </div>
-          <div class="cell cell-next">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</div>
+          <div
+            v-for="rule in rules" :key="rule.id"
+            class="table-row"
+            :class="{ selected: rule.id == selectedId }"
+            @click="onRowClick(rule)"
+          >
+            <div class="cell cell-id">{{ rule.id }}</div>
+            <div class="cell cell-name">{{ rule.name }}</div>
+            <div class="cell cell-enabled">{{ rule.enabled ? '✓' : '—' }}</div>
+            <div class="cell cell-count">{{ rule.actions?.length ?? 0 }}</div>
+            <div class="cell cell-backoff" :class="{ 'backoff-active': isCooldownActive(rule) }">
+              {{ isCooldownActive(rule) ? new Date(rule['cooldown-until']).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '—' }}
+            </div>
+            <div class="cell cell-next">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</div>
+          </div>
+        </div>
+        <div v-else-if="!error" class="empty">
+          <p>No rules yet.</p>
+          <p>Click <strong>+ New rule</strong> to create one.</p>
         </div>
       </div>
-      <div v-else-if="!error" class="empty">
-        <p>No rules yet.</p>
-        <p>Click <strong>+ New rule</strong> to create one.</p>
+
+      <div v-if="selectedId" class="detail-pane">
+        <router-view @updated="onRuleUpdated" @deleted="onRuleDeleted" />
       </div>
     </div>
-
-    <div v-if="selectedId" class="detail-pane">
-      <router-view @updated="onRuleUpdated" @deleted="onRuleDeleted" />
-    </div>
+    <div class="pagination-footer"></div>
   </div>
 </template>
 
 <style scoped>
-.split-layout {
-  display: flex;
+.rule-view {
   width: 100%;
   height: 100%;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.split-content {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
 }
 .list-pane {
   flex: 1 1 0;
@@ -120,6 +131,13 @@ function onRuleDeleted(id) {
 }
 .list-pane.half {
   max-width: 40%;
+}
+/* Reserved for future pagination controls; ittt-orchestrator doesn't paginate rules yet. */
+.pagination-footer {
+  flex: 0 0 auto;
+  height: 44px;
+  border-top: 2px solid #ddd;
+  background: #f5f5f5;
 }
 .pane-header {
   display: flex;

@@ -126,55 +126,58 @@ const selectedId = computed(() => route.params.id)
 </script>
 
 <template>
-  <div class="user-split-layout">
-    <div class="user-table" :class="{ 'half': selectedId }">
-      <div class="pane-header">
-        <h1>Users</h1>
-        <button class="btn-create" @click="openCreateDialog">+ New user</button>
-      </div>
-      <div v-if="error" class="error">Error: {{ error.message }}</div>
-      <div v-if="users.length > 0" class="table-wrapper">
-        <div class="table-header">
-          <div class="cell cell-id">ID</div>
-          <div class="cell cell-username">Username</div>
-          <div class="cell cell-name">Name</div>
-          <div class="cell cell-email">Email</div>
-          <div class="cell cell-actions"></div>
-        </div>
-        <div
-          v-for="user in users"
-          :key="user.id"
-          class="table-row"
-          :class="{ selected: String(user.id) === selectedId }"
-          @click="onRowClick(user.id)"
-        >
-          <div class="cell cell-id">{{ user.id }}</div>
-          <div class="cell cell-username">
-            {{ user.username }}
-            <span v-if="user.id === currentUserId" class="badge-you">YOU</span>
+  <div class="user-table">
+    <div class="pane-header">
+      <h1>Users</h1>
+      <button class="btn-create" @click="openCreateDialog">+ New user</button>
+    </div>
+    <div v-if="error" class="error">Error: {{ error.message }}</div>
+    <div class="split-content">
+      <div class="list-pane" :class="{ half: selectedId }">
+        <div v-if="users.length > 0" class="table-wrapper">
+          <div class="table-header">
+            <div class="cell cell-id">ID</div>
+            <div class="cell cell-username">Username</div>
+            <div class="cell cell-name">Name</div>
+            <div class="cell cell-email">Email</div>
+            <div class="cell cell-actions"></div>
           </div>
-          <div class="cell cell-name">{{ [user.name, user.surname].filter(Boolean).join(' ') || '—' }}</div>
-          <div class="cell cell-email">{{ user.email || '—' }}</div>
-          <div class="cell cell-actions">
-            <button
-              v-if="user.id === currentUserId"
-              class="btn-change-password"
-              @click.stop="openPasswordDialog"
-            >
-              Change Password
-            </button>
-            <button class="btn-delete" @click.stop="deleteUser(user.id, user.username)">Delete</button>
+          <div
+            v-for="user in users"
+            :key="user.id"
+            class="table-row"
+            :class="{ selected: String(user.id) === selectedId }"
+            @click="onRowClick(user.id)"
+          >
+            <div class="cell cell-id">{{ user.id }}</div>
+            <div class="cell cell-username">
+              {{ user.username }}
+              <span v-if="user.id === currentUserId" class="badge-you">YOU</span>
+            </div>
+            <div class="cell cell-name">{{ [user.name, user.surname].filter(Boolean).join(' ') || '—' }}</div>
+            <div class="cell cell-email">{{ user.email || '—' }}</div>
+            <div class="cell cell-actions">
+              <button
+                v-if="user.id === currentUserId"
+                class="btn-change-password"
+                @click.stop="openPasswordDialog"
+              >
+                Change Password
+              </button>
+              <button class="btn-delete" @click.stop="deleteUser(user.id, user.username)">Delete</button>
+            </div>
           </div>
         </div>
+        <div v-else-if="!error" class="empty">
+          <p>No users yet.</p>
+          <p>Click <strong>+ New user</strong> to create one.</p>
+        </div>
       </div>
-      <div v-else-if="!error" class="empty">
-        <p>No users yet.</p>
-        <p>Click <strong>+ New user</strong> to create one.</p>
+      <div v-if="selectedId" class="user-detail-half">
+        <router-view @updated="onUserUpdated" />
       </div>
     </div>
-    <div v-if="selectedId" class="user-detail-half">
-      <router-view @updated="onUserUpdated" />
-    </div>
+    <div class="pagination-footer"></div>
 
     <div v-if="showCreateDialog" class="dialog-backdrop" @click.self="closeCreateDialog">
       <div class="dialog">
@@ -276,24 +279,39 @@ const selectedId = computed(() => route.params.id)
 </template>
 
 <style scoped>
-.user-split-layout {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-}
 .user-table {
-  flex: 1 1 0;
-  min-width: 0;
-  transition: flex 0.3s;
+  width: 100%;
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
-.user-table.half {
-  flex: 1;
+.split-content {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+.list-pane {
+  flex: 1 1 0;
+  min-width: 0;
+  transition: max-width 0.3s;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.list-pane.half {
   max-width: 50%;
+}
+/* Reserved for future pagination controls; authentication-service doesn't paginate users yet. */
+.pagination-footer {
+  flex: 0 0 auto;
+  height: 44px;
+  border-top: 2px solid #ddd;
+  background: #f5f5f5;
 }
 .pane-header {
   display: flex;
