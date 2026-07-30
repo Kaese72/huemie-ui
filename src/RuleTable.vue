@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
@@ -8,20 +8,107 @@ const error = ref(null)
 const router = useRouter()
 const route = useRoute()
 
+// Pagination
+// These must match the fixed heights set on .table-header/.table-row/.pagination-footer in <style>.
+const ROW_HEIGHT_PX = 40
+const HEADER_HEIGHT_PX = 40
+const MIN_PAGE_SIZE = 1
+const RESIZE_DEBOUNCE_MS = 300
+const PAGE_WINDOW_RADIUS = 2
+
+const tableWrapperRef = ref(null)
+const pageSize = ref(MIN_PAGE_SIZE)
+const currentPage = ref(0) // 0-indexed
+const totalCount = ref(0)
+let resizeObserver = null
+let resizeDebounceTimer = null
+
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
+
+const pageWindow = computed(() => {
+  const pages = []
+  const start = Math.max(0, currentPage.value - PAGE_WINDOW_RADIUS)
+  const end = Math.min(totalPages.value - 1, currentPage.value + PAGE_WINDOW_RADIUS)
+  for (let p = start; p <= end; p++) pages.push(p)
+  return pages
+})
+const showFirst = computed(() => pageWindow.value.length === 0 || pageWindow.value[0] > 0)
+const showLast = computed(() => pageWindow.value.length === 0 || pageWindow.value[pageWindow.value.length - 1] < totalPages.value - 1)
+
+function calculatePageSize() {
+  const el = tableWrapperRef.value
+  if (!el || el.clientHeight === 0) return pageSize.value
+  const availableHeight = el.clientHeight - HEADER_HEIGHT_PX
+  return Math.max(MIN_PAGE_SIZE, Math.floor(availableHeight / ROW_HEIGHT_PX))
+}
+
 function isCooldownActive(rule) {
   return rule['cooldown-until'] && new Date(rule['cooldown-until']) > new Date()
 }
 
 const selectedId = computed(() => route.params.id)
 
-onMounted(async () => {
+async function fetchRules() {
   try {
-    const response = await axios.get('/ittt-orchestrator/v0/rules')
+    const offset = currentPage.value * pageSize.value
+    const response = await axios.get('/ittt-orchestrator/v0/rules', {
+      params: { offset, limit: pageSize.value }
+    })
     rules.value = Array.isArray(response.data) ? response.data : []
+    const totalHeader = response.headers['x-total-count']
+    totalCount.value = totalHeader != null ? parseInt(totalHeader, 10) : rules.value.length
+    // If the current page no longer exists (e.g. rules were removed), step back and refetch.
+    const maxPage = Math.max(0, totalPages.value - 1)
+    if (currentPage.value > maxPage) {
+      currentPage.value = maxPage
+      await fetchRules()
+      return
+    }
+    error.value = null
   } catch (err) {
     error.value = err
   }
-})
+}
+
+function goToPage(page) {
+  const clamped = Math.min(Math.max(0, page), totalPages.value - 1)
+  if (clamped === currentPage.value) return
+  currentPage.value = clamped
+  fetchRules()
+}
+
+function recalcPageSizeAndFetch() {
+  const newPageSize = calculatePageSize()
+  if (newPageSize === pageSize.value) return
+  // Keep viewing roughly the same rules when the page size changes.
+  const firstVisibleIndex = currentPage.value * pageSize.value
+  pageSize.value = newPageSize
+  currentPage.value = Math.floor(firstVisibleIndex / newPageSize)
+  fetchRules()
+}
+
+function handleResize() {
+  clearTimeout(resizeDebounceTimer)
+  resizeDebounceTimer = setTimeout(recalcPageSizeAndFetch, RESIZE_DEBOUNCE_MS)
+}
+
+onMounted(async () => {
+  await nextTick()
+  pageSize.value = calculatePageSize()
+  await fetchRules()
+
+  if (tableWrapperRef.value && 'ResizeObserver' in window) {
+    resizeObserver = new ResizeObserver(handleResize)
+    resizeObserver.observe(tableWrapperRef.value)
+  }
+});
+onBeforeUnmount(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  clearTimeout(resizeDebounceTimer);
+});
 
 function onRowClick(rule) {
   if (selectedId.value == rule.id) {
@@ -38,7 +125,8 @@ async function createRule() {
       enabled: false,
     })
     const created = response.data
-    rules.value.push(created)
+    // Pagination/total count shift when a rule is added, so refetch rather than pushing locally.
+    await fetchRules()
     router.push({ name: 'RuleDetail', params: { id: created.id } })
   } catch (err) {
     error.value = err
@@ -51,8 +139,9 @@ function onRuleUpdated(updated) {
 }
 
 function onRuleDeleted(id) {
-  rules.value = rules.value.filter(r => r.id !== id)
   router.push({ name: 'Rules' })
+  // Pagination/total count shift when a rule disappears, so refetch rather than filtering locally.
+  fetchRules()
 }
 </script>
 
@@ -65,7 +154,7 @@ function onRuleDeleted(id) {
     <div v-if="error" class="error">Error: {{ error.message }}</div>
     <div class="split-content">
       <div class="list-pane" :class="{ half: selectedId }">
-        <div v-if="rules.length > 0" class="table-wrapper">
+        <div class="table-wrapper" ref="tableWrapperRef">
           <div class="table-header">
             <div class="cell cell-id">ID</div>
             <div class="cell cell-name">Name</div>
@@ -89,10 +178,10 @@ function onRuleDeleted(id) {
             </div>
             <div class="cell cell-next">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</div>
           </div>
-        </div>
-        <div v-else-if="!error" class="empty">
-          <p>No rules yet.</p>
-          <p>Click <strong>+ New rule</strong> to create one.</p>
+          <div v-if="rules.length === 0 && !error" class="empty">
+            <p>No rules yet.</p>
+            <p>Click <strong>+ New rule</strong> to create one.</p>
+          </div>
         </div>
       </div>
 
@@ -100,7 +189,20 @@ function onRuleDeleted(id) {
         <router-view @updated="onRuleUpdated" @deleted="onRuleDeleted" />
       </div>
     </div>
-    <div class="pagination-footer"></div>
+    <div class="pagination-footer">
+      <button v-if="showFirst" class="page-btn" @click="goToPage(0)">0</button>
+      <button class="page-btn nav-btn" :disabled="currentPage === 0" @click="goToPage(currentPage - 1)">&lt;</button>
+      <button
+        v-for="p in pageWindow"
+        :key="p"
+        class="page-btn"
+        :class="{ current: p === currentPage }"
+        :disabled="p === currentPage"
+        @click="goToPage(p)"
+      >{{ p === currentPage ? `[${p}]` : p }}</button>
+      <button class="page-btn nav-btn" :disabled="currentPage === totalPages - 1" @click="goToPage(currentPage + 1)">&gt;</button>
+      <button v-if="showLast" class="page-btn" @click="goToPage(totalPages - 1)">{{ totalPages - 1 }}</button>
+    </div>
   </div>
 </template>
 
@@ -132,12 +234,41 @@ function onRuleDeleted(id) {
 .list-pane.half {
   max-width: 40%;
 }
-/* Reserved for future pagination controls; ittt-orchestrator doesn't paginate rules yet. */
 .pagination-footer {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   height: 44px;
   border-top: 2px solid #ddd;
   background: #f5f5f5;
+}
+.page-btn {
+  min-width: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+.page-btn:hover:not(:disabled) {
+  background: #e6f7ff;
+}
+.page-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.page-btn.current {
+  font-weight: bold;
+  border-color: #1890ff;
+  color: #1890ff;
+  background: #fff;
+  cursor: default;
+}
+.nav-btn {
+  font-weight: bold;
 }
 .pane-header {
   display: flex;
@@ -162,13 +293,15 @@ function onRuleDeleted(id) {
 .error { color: red; padding: 0.5rem; }
 .table-wrapper {
   flex: 1 1 0;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
 }
 .table-header, .table-row {
   display: flex;
   align-items: center;
   border-bottom: 1px solid #eee;
+  height: 40px;
+  box-sizing: border-box;
 }
 .table-header {
   font-weight: bold;
