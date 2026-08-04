@@ -13,6 +13,9 @@ import RuleTable from './RuleTable.vue';
 import RuleDetail from './RuleDetail.vue';
 import UserTable from './UserTable.vue';
 import UserDetail from './UserDetail.vue';
+import AIControlTable from './AIControlTable.vue';
+import AIControlNewChat from './AIControlNewChat.vue';
+import AIControlChat from './AIControlChat.vue';
 import MobileApp from './mobile/MobileApp.vue';
 import MobileHome from './mobile/MobileHome.vue';
 import MobileGroupList from './mobile/MobileGroupList.vue';
@@ -63,6 +66,9 @@ const routes = [
     component: UserTable,
     children: [{ path: ':id', name: 'UserDetail', component: UserDetail }]
   },
+  { path: '/ai-control', name: 'AIControl', component: AIControlTable },
+  { path: '/ai-control/new', name: 'AIControlNew', component: AIControlNewChat },
+  { path: '/ai-control/:id', name: 'AIControlChat', component: AIControlChat },
   {
     path: '/mobile',
     component: MobileApp,
