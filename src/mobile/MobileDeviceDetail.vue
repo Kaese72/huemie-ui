@@ -16,8 +16,9 @@ onMounted(async () => {
   try {
     const response = await axios.get(`/device-store/v0/devices/${route.params.id}`)
     device.value = response.data
-    const label = device.value.attributes?.find(a => a.name === 'description')?.['string-state']
-      ?? device.value['bridge-identifier']
+    const label = device.value.name
+      || device.value.attributes?.find(a => a.name === 'description')?.['string-state']
+      || device.value['bridge-identifier']
     title.value = label
   } catch (err) {
     error.value = err

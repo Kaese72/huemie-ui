@@ -48,6 +48,26 @@ http {
             proxy_pass http://app.huemie.space;
         }
 
+        # chatbot-service's .../follow/{id} endpoint is a long-lived SSE
+        # stream, and a turn can easily go >60s (nginx's default
+        # proxy_read_timeout) between DialogEntries while the agent is
+        # calling tools -- with no data flowing, nginx sees the upstream
+        # connection as idle and kills it, sometimes mid-write on whatever
+        # entry was being forwarded. proxy_buffering off is needed too, so
+        # nginx doesn't hold small SSE frames back waiting to fill a buffer.
+        # Symptom without these: the AI Control UI looks stuck holding the
+        # initiative, because the DialogEntry that would hand it back never
+        # arrives -- only reconnecting (which replays everything after the
+        # last entry actually received) recovers it.
+        location /chatbot-service {
+            proxy_pass http://app.huemie.space;
+            proxy_http_version 1.1;
+            proxy_set_header Connection '';
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 3600s;
+        }
+
     }
 }
 ```

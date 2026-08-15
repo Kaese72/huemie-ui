@@ -5,6 +5,7 @@ import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 import { extractAttribute, extractAttributeUpdated } from './utils/deviceUtil.js'
 import { useAuth } from './composables/useAuth.js'
+import ColumnFilter from './components/ColumnFilter.vue'
 
 const { useToken } = useAuth()
 
@@ -31,6 +32,53 @@ const totalCount = ref(0)
 let resizeObserver = null
 let resizeDebounceTimer = null
 
+// Column filtering
+// columnFilters maps a device-store filter key ('id', or 'attribute.<name>')
+// to { op, value }, as understood by the device-store `filters` query param.
+const columnFilters = ref({})
+// attributeStats maps attribute name -> { name, n-boolean, n-text, n-numeric }
+// from GET /device-store/v0/attributes/statistics, used to decide which
+// types are selectable (and which is pre-selected) in each attribute's
+// filter dialog.
+const attributeStats = ref({})
+
+function buildFiltersParam() {
+  const entries = Object.entries(columnFilters.value)
+  if (entries.length === 0) return undefined
+  return JSON.stringify(entries.map(([key, filter]) => ({ key, op: filter.op, value: filter.value })))
+}
+
+async function fetchAttributeStats() {
+  try {
+    const response = await axios.get('/device-store/v0/attributes/statistics', {
+      params: { names: knownAttributes.join(',') }
+    })
+    const statsByName = {}
+    for (const stat of response.data || []) {
+      statsByName[stat.name] = stat
+    }
+    attributeStats.value = statsByName
+  } catch (err) {
+    // Non-critical: filter dialogs just fall back to offering all types.
+    console.log('Failed to fetch attribute statistics:', err)
+  }
+}
+
+function onColumnFilterApply(key, filter) {
+  columnFilters.value = { ...columnFilters.value, [key]: filter }
+  currentPage.value = 0
+  fetchDevices()
+}
+
+function onColumnFilterClear(key) {
+  if (!(key in columnFilters.value)) return
+  const next = { ...columnFilters.value }
+  delete next[key]
+  columnFilters.value = next
+  currentPage.value = 0
+  fetchDevices()
+}
+
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
 
 const pageWindow = computed(() => {
@@ -53,9 +101,10 @@ function calculatePageSize() {
 async function fetchDevices() {
   try {
     const offset = currentPage.value * pageSize.value
-    const response = await axios.get('/device-store/v0/devices', {
-      params: { offset, limit: pageSize.value }
-    })
+    const params = { offset, limit: pageSize.value }
+    const filtersParam = buildFiltersParam()
+    if (filtersParam) params.filters = filtersParam
+    const response = await axios.get('/device-store/v0/devices', { params })
     devices.value = response.data
     const totalHeader = response.headers['x-total-count']
     totalCount.value = totalHeader != null ? parseInt(totalHeader, 10) : devices.value.length
@@ -199,7 +248,7 @@ async function connectSSE() {
 onMounted(async () => {
   await nextTick()
   pageSize.value = calculatePageSize()
-  await fetchDevices()
+  await Promise.all([fetchDevices(), fetchAttributeStats()])
 
   if (tableWrapperRef.value && 'ResizeObserver' in window) {
     resizeObserver = new ResizeObserver(handleResize)
@@ -260,12 +309,31 @@ const selectedId = computed(() => route.params.id)
     <div class="split-content">
       <div class="table-wrapper" :class="{ half: selectedId }" ref="tableWrapperRef">
         <div class="table-header">
-          <div class="table-cell id-cell">ID</div>
+          <div class="table-cell id-cell header-cell">
+            <span class="header-label">ID</span>
+            <ColumnFilter
+              type="id"
+              :active="!!columnFilters['id']"
+              @apply="filter => onColumnFilterApply('id', filter)"
+              @clear="() => onColumnFilterClear('id')"
+            />
+          </div>
+          <div class="table-cell name-cell">Name</div>
           <div class="table-cell updated-cell">Updated</div>
-          <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell">{{ attr }}</div>
+          <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell header-cell">
+            <span class="header-label">{{ attr }}</span>
+            <ColumnFilter
+              type="attribute"
+              :stats="attributeStats[attr]"
+              :active="!!columnFilters['attribute.' + attr]"
+              @apply="filter => onColumnFilterApply('attribute.' + attr, filter)"
+              @clear="() => onColumnFilterClear('attribute.' + attr)"
+            />
+          </div>
         </div>
         <div v-for="device in devices" :key="device.id" @click="onRowClick(device)" :class="['table-row', { selected: device.id === selectedId }]">
           <div class="table-cell id-cell" :title="device.id">{{ device.id }}</div>
+          <div class="table-cell name-cell" :title="device.name">{{ device.name }}</div>
           <div class="table-cell updated-cell" :title="device.updated">{{ device.updated }}</div>
           <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell" :title="getAttributeTooltip(device, attr)">
             {{ extractAttribute(device, attr) }}
@@ -376,6 +444,24 @@ const selectedId = computed(() => route.params.id)
 }
 .attr-cell {
   text-transform: capitalize;
+}
+.name-cell {
+  min-width: 180px;
+  max-width: 180px;
+  width: 180px;
+  font-weight: bold;
+}
+.header-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+.header-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 .updated-cell {
   min-width: 220px;

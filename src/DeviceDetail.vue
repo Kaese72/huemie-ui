@@ -13,6 +13,9 @@ const showDialog = ref(false)
 const selectedCapability = ref(null)
 const triggerAudits = ref([])
 const activeTab = computed(() => route.params.tab)
+const editingName = ref(false)
+const nameDraft = ref('')
+const savingName = ref(false)
 
 onMounted(fetchDevice)
 watch(() => route.params.id, fetchDevice)
@@ -74,6 +77,35 @@ function triggerCapability(argumentValues) {
     })
 }
 
+function startEditingName() {
+  nameDraft.value = device.value.name || ''
+  editingName.value = true
+}
+
+function cancelEditingName() {
+  editingName.value = false
+}
+
+async function saveName(name) {
+  if (!device.value) return
+  savingName.value = true
+  try {
+    const response = await axios.patch(`/device-store/v0/devices/${device.value.id}`, { name })
+    device.value = response.data
+    editingName.value = false
+  } catch (err) {
+    error.value = err
+  } finally {
+    savingName.value = false
+  }
+}
+
+function setAttributeAsName(attribute) {
+  const value = attribute['string-state']
+  if (value === undefined || value === null || value === '') return
+  saveName(value)
+}
+
 function extractAttributeValue(attribute) {
   if (!attribute) return 'Unknown'
   if (attribute['string-state'] !== undefined && attribute['string-state'] !== null && attribute['string-state'] !== '') {
@@ -106,7 +138,25 @@ async function forgetDevice() {
 <template>
   <div v-if="error">Error: {{ error.message }}</div>
   <div v-else-if="device">
-    <h2>Device Details: {{ device.id }}</h2>
+    <h2 class="device-name-heading">
+      <template v-if="!editingName">
+        [{{ device.id }}] {{ device.name || '(unnamed)' }}
+        <button class="icon-button" title="Edit name" @click="startEditingName">&#9998;</button>
+      </template>
+      <template v-else>
+        [{{ device.id }}]
+        <input
+          v-model="nameDraft"
+          class="name-input"
+          maxlength="255"
+          :disabled="savingName"
+          @keyup.enter="saveName(nameDraft)"
+          @keyup.esc="cancelEditingName"
+        >
+        <button class="icon-button" :disabled="savingName" @click="saveName(nameDraft)">Save</button>
+        <button class="icon-button" :disabled="savingName" @click="cancelEditingName">Cancel</button>
+      </template>
+    </h2>
     <div class="device-meta">
       <strong>Bridge identifier:</strong> {{ device['bridge-identifier'] }}<br>
       <strong>Last updated:</strong> {{ device.updated || 'Unknown' }}
@@ -126,6 +176,7 @@ async function forgetDevice() {
               <th>Name</th>
               <th>Value</th>
               <th>Updated</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -133,6 +184,16 @@ async function forgetDevice() {
               <td>{{ attribute.name }}</td>
               <td>{{ extractAttributeValue(attribute) }}</td>
               <td>{{ attribute.updated || 'Unknown' }}</td>
+              <td>
+                <button
+                  v-if="attribute['string-state']"
+                  class="icon-button"
+                  :disabled="savingName"
+                  @click="setAttributeAsName(attribute)"
+                >
+                  Set as name
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -207,6 +268,33 @@ async function forgetDevice() {
 <style scoped>
 .device-meta {
   margin-bottom: 1rem;
+}
+.device-name-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.icon-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0.15rem 0.4rem;
+}
+.device-name-heading:hover .icon-button,
+.device-name-heading .icon-button:focus {
+  opacity: 1;
+}
+.data-table .icon-button {
+  opacity: 1;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.name-input {
+  font-size: 1rem;
+  padding: 0.15rem 0.4rem;
 }
 .tabs {
   display: flex;

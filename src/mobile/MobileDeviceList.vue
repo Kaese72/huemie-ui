@@ -18,7 +18,7 @@ onMounted(async () => {
 })
 
 function getLabel(device) {
-  return device.attributes?.find(a => a.name === 'description')?.['string-state'] ?? device['bridge-identifier']
+  return device.name || (device.attributes?.find(a => a.name === 'description')?.['string-state'] ?? device['bridge-identifier'])
 }
 </script>
 
