@@ -33,8 +33,9 @@ let resizeObserver = null
 let resizeDebounceTimer = null
 
 // Column filtering
-// columnFilters maps a device-store filter key ('id', or 'attribute.<name>')
-// to { op, value }, as understood by the device-store `filters` query param.
+// columnFilters maps a device-store filter key ('id', 'name', or
+// 'attribute.<name>') to { op, value }, as understood by the device-store
+// `filters` query param.
 const columnFilters = ref({})
 // attributeStats maps attribute name -> { name, n-boolean, n-text, n-numeric }
 // from GET /device-store/v0/attributes/statistics, used to decide which
@@ -318,7 +319,15 @@ const selectedId = computed(() => route.params.id)
               @clear="() => onColumnFilterClear('id')"
             />
           </div>
-          <div class="table-cell name-cell">Name</div>
+          <div class="table-cell name-cell header-cell">
+            <span class="header-label">Name</span>
+            <ColumnFilter
+              type="name"
+              :active="!!columnFilters['name']"
+              @apply="filter => onColumnFilterApply('name', filter)"
+              @clear="() => onColumnFilterClear('name')"
+            />
+          </div>
           <div class="table-cell updated-cell">Updated</div>
           <div v-for="attr in knownAttributes" :key="attr" class="table-cell attr-cell header-cell">
             <span class="header-label">{{ attr }}</span>

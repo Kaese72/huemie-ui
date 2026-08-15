@@ -3,6 +3,8 @@ import { ref, computed, onBeforeUnmount } from 'vue'
 
 // type: 'id' filters the device id field (always uses the backend's `in`
 // operator, so a single id or a comma-separated list both work).
+// type: 'name' filters the device's own name field with a plain
+// contains/equals text comparison (no type selector, unlike 'attribute').
 // type: 'attribute' filters a device attribute; `stats` (from
 // GET /device-store/v0/attributes/statistics) tells us which of the three
 // possible types (boolean/numeric/text) actually occur for this attribute,
@@ -123,6 +125,11 @@ function buildFilter() {
     if (!trimmed) return null
     return { op: 'in', value: trimmed }
   }
+  if (props.type === 'name') {
+    const trimmed = textValue.value.trim()
+    if (!trimmed) return null
+    return { op: selectedTextOperator.value, value: trimmed }
+  }
   if (selectedType.value === 'boolean') {
     return { op: 'bool-eq', value: booleanValue.value ? 'true' : 'false' }
   }
@@ -173,6 +180,14 @@ function clear() {
         <template v-if="type === 'id'">
           <label class="field-label">ID (or comma-separated list)</label>
           <input v-model="idValue" type="text" placeholder="e.g. 3 or 3,4,5" class="filter-input" @keydown.enter="apply" />
+        </template>
+        <template v-else-if="type === 'name'">
+          <label class="field-label">Comparison</label>
+          <select v-model="selectedTextOperator" class="filter-select">
+            <option v-for="o in TEXT_OPERATORS" :key="o.op" :value="o.op">{{ o.label }}</option>
+          </select>
+          <label class="field-label">Value</label>
+          <input v-model="textValue" type="text" class="filter-input" @keydown.enter="apply" />
         </template>
         <template v-else>
           <label class="field-label">Type</label>
