@@ -24,6 +24,8 @@ import MobileDeviceList from './mobile/MobileDeviceList.vue';
 import MobileDeviceDetail from './mobile/MobileDeviceDetail.vue';
 import Login from './Login.vue';
 import Setup from './Setup.vue';
+import CloudConnectSetup from './CloudConnectSetup.vue';
+import CloudConnectCallback from './CloudConnectCallback.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: Login, meta: { public: true } },
@@ -69,6 +71,8 @@ const routes = [
   { path: '/ai-control', name: 'AIControl', component: AIControlTable },
   { path: '/ai-control/new', name: 'AIControlNew', component: AIControlNewChat },
   { path: '/ai-control/:id', name: 'AIControlChat', component: AIControlChat },
+  { path: '/cloud-connect', name: 'CloudConnectSetup', component: CloudConnectSetup },
+  { path: '/cloud-connect/callback', name: 'CloudConnectCallback', component: CloudConnectCallback },
   {
     path: '/mobile',
     component: MobileApp,

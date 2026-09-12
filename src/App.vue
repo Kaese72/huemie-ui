@@ -69,6 +69,12 @@ function toggleViewMode() {
             <span class="nav-label">AI Control</span>
           </router-link>
         </li>
+        <li>
+          <router-link to="/cloud-connect">
+            <span class="nav-icon">☁️</span>
+            <span class="nav-label">Cloud Connect</span>
+          </router-link>
+        </li>
         <li v-if="!isMobileDevice">
           <a @click.prevent="toggleViewMode" href="#" :title="'Switch to mobile view'">
             <span class="nav-icon">📱</span>
