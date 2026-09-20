@@ -27,10 +27,12 @@ import Login from './Login.vue';
 import Setup from './Setup.vue';
 import CloudConnectSetup from './CloudConnectSetup.vue';
 import CloudConnectCallback from './CloudConnectCallback.vue';
+import CloudLoginCallback from './CloudLoginCallback.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: Login, meta: { public: true } },
   { path: '/setup', name: 'Setup', component: Setup, meta: { public: true } },
+  { path: '/cloud-login/callback', name: 'CloudLoginCallback', component: CloudLoginCallback, meta: { public: true } },
   { path: '/', redirect: '/home' },
   { path: '/home', name: 'Home', component: Home },
   {

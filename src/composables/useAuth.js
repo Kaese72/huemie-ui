@@ -29,6 +29,8 @@ const currentUserId = computed(() => {
 })
 
 const LOGIN_URL = '/authentication-service/v0/authentication/login'
+const CLOUD_LOGIN_URL = '/authentication-service/v0/authentication/cloud'
+const CLOUD_STATE_KEY = 'cloudLoginState'
 const REFRESH_INTERVAL_MS = 8 * 60 * 1000 // 8 min; use-token expires in 10 min
 
 function setToken(token) {
@@ -82,5 +84,58 @@ export function useAuth() {
     clearToken()
   }
 
-  return { useToken, isAuthenticated, isInitialized, currentUserId, init, login, logout }
+  // Whether to offer "Log in with Humi Cloud": true only when the appliance
+  // is enrolled with the cloud. Any failure just means "don't offer it".
+  async function cloudLoginAvailable() {
+    try {
+      const response = await axios.get(`${CLOUD_LOGIN_URL}/status`)
+      return response.data.available === true
+    } catch {
+      return false
+    }
+  }
+
+  // Sends the browser to the cloud to log in. The state value the appliance
+  // hands back is remembered for this tab only, so completeCloudLogin can
+  // check the callback belongs to a login this tab started.
+  async function startCloudLogin() {
+    const returnTo = `${window.location.origin}/cloud-login/callback`
+    const response = await axios.post(`${CLOUD_LOGIN_URL}/start`, { returnTo })
+    try {
+      sessionStorage.setItem(CLOUD_STATE_KEY, response.data.state)
+    } catch {
+      throw new Error('This browser blocks the storage needed for cloud login.')
+    }
+    window.location.href = response.data.cloudUrl
+  }
+
+  // Finishes a cloud login from the code and state in the callback URL.
+  async function completeCloudLogin(code, state) {
+    let expected = null
+    try {
+      expected = sessionStorage.getItem(CLOUD_STATE_KEY)
+      sessionStorage.removeItem(CLOUD_STATE_KEY)
+    } catch {
+      // treated as a mismatch below
+    }
+    if (!expected || expected !== state) {
+      throw new Error('This login was not started from this browser tab. Please try again.')
+    }
+    const response = await axios.post(`${CLOUD_LOGIN_URL}/complete`, { code, state }, { withCredentials: true })
+    setToken(response.data['use-token'])
+    startRefreshInterval()
+  }
+
+  return {
+    useToken,
+    isAuthenticated,
+    isInitialized,
+    currentUserId,
+    init,
+    login,
+    logout,
+    cloudLoginAvailable,
+    startCloudLogin,
+    completeCloudLogin,
+  }
 }

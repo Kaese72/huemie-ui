@@ -5,13 +5,14 @@ import axios from 'axios'
 import { useAuth } from './composables/useAuth.js'
 
 const router = useRouter()
-const { login } = useAuth()
+const { login, cloudLoginAvailable, startCloudLogin } = useAuth()
 
 const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
 const userSetupNeeded = ref(false)
+const cloudAvailable = ref(false)
 
 onMounted(async () => {
   try {
@@ -20,7 +21,19 @@ onMounted(async () => {
   } catch {
     // If the status check fails, assume setup is done
   }
+  cloudAvailable.value = await cloudLoginAvailable()
 })
+
+async function handleCloudLogin() {
+  error.value = ''
+  loading.value = true
+  try {
+    await startCloudLogin()
+  } catch (e) {
+    error.value = e.response?.data?.detail ?? e.message ?? 'Could not start cloud login. Please try again.'
+    loading.value = false
+  }
+}
 
 async function handleSubmit() {
   error.value = ''
@@ -78,6 +91,13 @@ async function handleSubmit() {
           {{ loading ? 'Logging in…' : 'Log in' }}
         </button>
       </form>
+
+      <template v-if="cloudAvailable">
+        <div class="divider"><span>or</span></div>
+        <button type="button" :disabled="loading" class="cloud-btn" @click="handleCloudLogin">
+          Log in with Humi Cloud
+        </button>
+      </template>
     </div>
   </div>
 </template>
@@ -192,6 +212,45 @@ async function handleSubmit() {
 }
 
 .submit-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0 1rem;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #ddd;
+}
+
+.cloud-btn {
+  width: 100%;
+  background: #fff;
+  color: #1565c0;
+  border: 1px solid #1565c0;
+  border-radius: 5px;
+  padding: 0.65rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cloud-btn:hover:not(:disabled) {
+  background: #e8f0fb;
+}
+
+.cloud-btn:disabled {
   opacity: 0.65;
   cursor: default;
 }
