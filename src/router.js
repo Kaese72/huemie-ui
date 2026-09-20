@@ -16,6 +16,7 @@ import UserDetail from './UserDetail.vue';
 import AIControlTable from './AIControlTable.vue';
 import AIControlNewChat from './AIControlNewChat.vue';
 import AIControlChat from './AIControlChat.vue';
+import AIControlSettings from './AIControlSettings.vue';
 import MobileApp from './mobile/MobileApp.vue';
 import MobileHome from './mobile/MobileHome.vue';
 import MobileGroupList from './mobile/MobileGroupList.vue';
@@ -70,6 +71,7 @@ const routes = [
   },
   { path: '/ai-control', name: 'AIControl', component: AIControlTable },
   { path: '/ai-control/new', name: 'AIControlNew', component: AIControlNewChat },
+  { path: '/ai-control/settings', name: 'AIControlSettings', component: AIControlSettings },
   { path: '/ai-control/:id', name: 'AIControlChat', component: AIControlChat },
   { path: '/cloud-connect', name: 'CloudConnectSetup', component: CloudConnectSetup },
   { path: '/cloud-connect/callback', name: 'CloudConnectCallback', component: CloudConnectCallback },

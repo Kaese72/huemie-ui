@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useViewMode } from './composables/useViewMode.js'
 
@@ -10,6 +10,13 @@ const router = useRouter()
 const route = useRoute()
 
 const isPublicRoute = computed(() => route.meta.public === true)
+
+// The AI Control sub-menu opens itself when entering any of its views, but
+// can still be collapsed by hand afterwards.
+const isAiControlRoute = computed(() => route.path.startsWith('/ai-control'))
+const isAiChatRoute = computed(() => isAiControlRoute.value && !route.path.startsWith('/ai-control/settings'))
+const aiControlOpen = ref(false)
+watch(isAiControlRoute, (active) => { if (active) aiControlOpen.value = true }, { immediate: true })
 
 function toggleViewMode() {
   if (viewMode.value === 'desktop') {
@@ -64,10 +71,37 @@ function toggleViewMode() {
           </router-link>
         </li>
         <li>
-          <router-link to="/ai-control">
-            <span class="nav-icon">🤖</span>
-            <span class="nav-label">AI Control</span>
-          </router-link>
+          <div class="nav-parent">
+            <router-link to="/ai-control">
+              <span class="nav-icon">🤖</span>
+              <span class="nav-label">AI Control</span>
+            </router-link>
+            <button
+              class="nav-toggle"
+              type="button"
+              :aria-expanded="aiControlOpen"
+              :title="aiControlOpen ? 'Collapse AI Control' : 'Expand AI Control'"
+              @click="aiControlOpen = !aiControlOpen"
+            >
+              <span class="nav-arrow" :class="{ open: aiControlOpen }">▸</span>
+            </button>
+          </div>
+          <ul v-if="aiControlOpen" class="sub-menu">
+            <li>
+              <router-link to="/ai-control" custom v-slot="{ href, navigate }">
+                <a :href="href" :class="{ active: isAiChatRoute }" @click="navigate">
+                  <span class="nav-icon">💬</span>
+                  <span class="nav-label">Chat</span>
+                </a>
+              </router-link>
+            </li>
+            <li>
+              <router-link to="/ai-control/settings">
+                <span class="nav-icon">🔑</span>
+                <span class="nav-label">Settings</span>
+              </router-link>
+            </li>
+          </ul>
         </li>
         <li>
           <router-link to="/cloud-connect">
@@ -136,10 +170,39 @@ function toggleViewMode() {
   white-space: nowrap;
   transition: color 0.2s;
 }
-.sidebar a.router-link-active {
+.sidebar a.router-link-active,
+.sidebar a.active {
   font-weight: bold;
   color: #42b983;
 }
+.nav-parent {
+  display: flex;
+  align-items: center;
+}
+.nav-parent a {
+  flex: 1;
+}
+.nav-toggle {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1;
+  transition: opacity 0.15s ease;
+}
+.nav-toggle:hover { color: #42b983; }
+.sidebar.collapsed .nav-toggle { opacity: 0; }
+.nav-arrow {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.nav-arrow.open { transform: rotate(90deg); }
+.sub-menu li { margin: 0; }
+.sub-menu a { font-size: 0.95rem; }
+.sidebar:not(.collapsed) .sub-menu a { padding-left: 1.75rem; }
 .nav-icon {
   font-size: 1.2rem;
   width: 24px;
