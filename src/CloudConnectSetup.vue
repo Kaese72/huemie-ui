@@ -8,6 +8,8 @@ const status = ref(null)
 const error = ref(null)
 const connecting = ref(false)
 const resetting = ref(false)
+const rotating = ref(false)
+const rotated = ref(false)
 let pollId = null
 
 onMounted(async () => {
@@ -39,6 +41,22 @@ async function connectToCloud() {
   } catch (err) {
     error.value = err.response?.data?.detail ?? err.message
     connecting.value = false
+  }
+}
+
+async function rotateSecret() {
+  if (!confirm('Rotate this appliance\'s cloud secret? The old secret stops working immediately and remote access reconnects with the new one.')) return
+  rotating.value = true
+  rotated.value = false
+  error.value = null
+  try {
+    const response = await axios.post('/cloud-connect-client/v0/enrollment/rotate-secret')
+    status.value = response.data
+    rotated.value = true
+  } catch (err) {
+    error.value = err.response?.data?.detail ?? err.message
+  } finally {
+    rotating.value = false
   }
 }
 
@@ -75,9 +93,15 @@ async function disconnect() {
       <button v-if="status.status === 'unenrolled'" class="btn-connect" :disabled="connecting" @click="connectToCloud">
         {{ connecting ? 'Connecting…' : 'Connect to Cloud' }}
       </button>
-      <button v-else class="btn-disconnect" :disabled="resetting" @click="disconnect">
-        {{ resetting ? 'Disconnecting…' : 'Disconnect' }}
-      </button>
+      <template v-else>
+        <button class="btn-rotate" :disabled="rotating || resetting" @click="rotateSecret">
+          {{ rotating ? 'Rotating…' : 'Rotate secret' }}
+        </button>
+        <button class="btn-disconnect" :disabled="resetting || rotating" @click="disconnect">
+          {{ resetting ? 'Disconnecting…' : 'Disconnect' }}
+        </button>
+        <p v-if="rotated" class="notice">Secret rotated.</p>
+      </template>
     </div>
   </div>
 </template>
@@ -109,8 +133,9 @@ async function disconnect() {
 .badge-enrolled { background: #d4edda; color: #1b5e20; }
 .badge-connected { background: #d4edda; color: #1b5e20; }
 .badge-disconnected { background: #fff3cd; color: #856404; }
-.btn-connect, .btn-disconnect {
+.btn-connect, .btn-disconnect, .btn-rotate {
   margin-top: 1rem;
+  margin-right: 0.5rem;
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 4px;
@@ -128,7 +153,17 @@ async function disconnect() {
   border: 1px solid #c62828;
 }
 .btn-disconnect:hover:not(:disabled) { background: #c62828; color: #fff; }
-.btn-connect:disabled, .btn-disconnect:disabled { opacity: 0.6; cursor: default; }
+.btn-rotate {
+  background: #fff;
+  color: #333;
+  border: 1px solid #999;
+}
+.btn-rotate:hover:not(:disabled) { background: #f0f0f0; }
+.btn-connect:disabled, .btn-disconnect:disabled, .btn-rotate:disabled { opacity: 0.6; cursor: default; }
+.notice {
+  color: #1b5e20;
+  font-size: 0.9rem;
+}
 .error {
   color: #c62828;
   padding: 0.5rem 0;

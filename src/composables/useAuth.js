@@ -29,6 +29,7 @@ const currentUserId = computed(() => {
 })
 
 const LOGIN_URL = '/authentication-service/v0/authentication/login'
+const LOGOUT_URL = '/authentication-service/v0/authentication/logout'
 const CLOUD_LOGIN_URL = '/authentication-service/v0/authentication/cloud'
 const CLOUD_STATE_KEY = 'cloudLoginState'
 const REFRESH_INTERVAL_MS = 8 * 60 * 1000 // 8 min; use-token expires in 10 min
@@ -80,7 +81,12 @@ export function useAuth() {
     startRefreshInterval()
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await axios.post(LOGOUT_URL, {}, { withCredentials: true })
+    } catch {
+      // Still drop the local session; the refresh cookie just lives until it expires.
+    }
     clearToken()
   }
 

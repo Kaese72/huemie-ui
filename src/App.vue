@@ -2,8 +2,10 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useViewMode } from './composables/useViewMode.js'
+import { useAuth } from './composables/useAuth.js'
 
 const hovered = ref(false)
+const { logout } = useAuth()
 
 const { viewMode, isMobileDevice } = useViewMode()
 const router = useRouter()
@@ -17,6 +19,11 @@ const isAiControlRoute = computed(() => route.path.startsWith('/ai-control'))
 const isAiChatRoute = computed(() => isAiControlRoute.value && !route.path.startsWith('/ai-control/settings'))
 const aiControlOpen = ref(false)
 watch(isAiControlRoute, (active) => { if (active) aiControlOpen.value = true }, { immediate: true })
+
+async function handleLogout() {
+  await logout()
+  router.push({ name: 'Login' })
+}
 
 function toggleViewMode() {
   if (viewMode.value === 'desktop') {
@@ -116,6 +123,14 @@ function toggleViewMode() {
           </a>
         </li>
       </ul>
+      <ul class="sidebar-bottom">
+        <li>
+          <a @click.prevent="handleLogout" href="#" title="Log out">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-label">Log out</span>
+          </a>
+        </li>
+      </ul>
     </nav>
     <main class="main-content">
       <router-view />
@@ -159,6 +174,9 @@ function toggleViewMode() {
 }
 .sidebar li {
   margin: 0.5rem 0;
+}
+.sidebar-bottom {
+  margin-top: auto;
 }
 .sidebar a {
   display: flex;
