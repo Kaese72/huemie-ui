@@ -175,7 +175,7 @@ function toggleViewMode() {
 .sidebar li {
   margin: 0.5rem 0;
 }
-.sidebar-bottom {
+.sidebar ul.sidebar-bottom {
   margin-top: auto;
 }
 .sidebar a {
