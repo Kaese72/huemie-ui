@@ -245,6 +245,7 @@ const selectedId = computed(() => route.params.id)
             <div class="cell cell-email">Email</div>
             <div class="cell cell-flag" title="Has a local password">Local</div>
             <div class="cell cell-flag" title="Linked to a Humi Cloud account">Cloud</div>
+            <div class="cell cell-flag" title="Has admin permissions">Admin</div>
             <div class="cell cell-actions"></div>
           </div>
           <div
@@ -263,6 +264,7 @@ const selectedId = computed(() => route.params.id)
             <div class="cell cell-email">{{ user.email || '—' }}</div>
             <div class="cell cell-flag" :class="user.localLogin ? 'flag-yes' : 'flag-no'">{{ user.localLogin ? '✓' : '—' }}</div>
             <div class="cell cell-flag" :class="user.cloudLogin ? 'flag-yes' : 'flag-no'">{{ user.cloudLogin ? '✓' : '—' }}</div>
+            <div class="cell cell-flag" :class="user.permissions?.admin ? 'flag-yes' : 'flag-no'">{{ user.permissions?.admin ? '✓' : '—' }}</div>
             <div class="cell cell-actions">
               <button
                 v-if="user.id === currentUserId"
