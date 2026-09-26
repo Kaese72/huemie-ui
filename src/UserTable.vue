@@ -3,10 +3,18 @@ import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from './composables/useAuth.js'
+import PermissionsDialog from './components/PermissionsDialog.vue'
 
-const { currentUserId } = useAuth()
+const { currentUserId, currentUserIsAdmin, hasModify } = useAuth()
 const router = useRouter()
 const route = useRoute()
+
+// "us" is authentication/usertoken.ResourceUsers - the server is the one
+// that actually enforces this; this only decides whether to show the button.
+const canManagePermissions = computed(() => currentUserIsAdmin.value || hasModify('us'))
+const showPermissionsDialog = ref(false)
+const permissionsUserId = ref(null)
+const permissionsUser = computed(() => users.value.find(u => u.id === permissionsUserId.value) ?? null)
 
 const users = ref([])
 const error = ref(null)
@@ -208,6 +216,15 @@ function onUserUpdated(updated) {
   users.value = users.value.map(u => u.id === updated.id ? updated : u)
 }
 
+function openPermissionsDialog(userId) {
+  permissionsUserId.value = userId
+  showPermissionsDialog.value = true
+}
+
+function closePermissionsDialog() {
+  showPermissionsDialog.value = false
+}
+
 const selectedId = computed(() => route.params.id)
 </script>
 
@@ -226,6 +243,8 @@ const selectedId = computed(() => route.params.id)
             <div class="cell cell-username">Username</div>
             <div class="cell cell-name">Name</div>
             <div class="cell cell-email">Email</div>
+            <div class="cell cell-flag" title="Has a local password">Local</div>
+            <div class="cell cell-flag" title="Linked to a Humi Cloud account">Cloud</div>
             <div class="cell cell-actions"></div>
           </div>
           <div
@@ -242,6 +261,8 @@ const selectedId = computed(() => route.params.id)
             </div>
             <div class="cell cell-name">{{ [user.name, user.surname].filter(Boolean).join(' ') || '—' }}</div>
             <div class="cell cell-email">{{ user.email || '—' }}</div>
+            <div class="cell cell-flag" :class="user.localLogin ? 'flag-yes' : 'flag-no'">{{ user.localLogin ? '✓' : '—' }}</div>
+            <div class="cell cell-flag" :class="user.cloudLogin ? 'flag-yes' : 'flag-no'">{{ user.cloudLogin ? '✓' : '—' }}</div>
             <div class="cell cell-actions">
               <button
                 v-if="user.id === currentUserId"
@@ -249,6 +270,13 @@ const selectedId = computed(() => route.params.id)
                 @click.stop="openPasswordDialog"
               >
                 Change Password
+              </button>
+              <button
+                v-if="canManagePermissions"
+                class="btn-permissions"
+                @click.stop="openPermissionsDialog(user.id)"
+              >
+                Permissions
               </button>
               <button class="btn-delete" @click.stop="deleteUser(user.id, user.username)">Delete</button>
             </div>
@@ -374,6 +402,14 @@ const selectedId = computed(() => route.params.id)
         </div>
       </div>
     </div>
+
+    <PermissionsDialog
+      :show="showPermissionsDialog"
+      :user="permissionsUser"
+      :viewer-is-admin="currentUserIsAdmin"
+      @close="closePermissionsDialog"
+      @updated="onUserUpdated"
+    />
   </div>
 </template>
 
@@ -494,7 +530,10 @@ const selectedId = computed(() => route.params.id)
 .cell-username { flex: 1; min-width: 0; }
 .cell-name     { flex: 1; min-width: 0; }
 .cell-email    { flex: 1; min-width: 0; }
-.cell-actions  { width: 200px; flex-shrink: 0; display: flex; justify-content: flex-end; gap: 0.5rem; }
+.cell-flag     { width: 55px; flex-shrink: 0; text-align: center; font-weight: bold; }
+.flag-yes { color: #2e7d32; }
+.flag-no  { color: #bbb; font-weight: normal; }
+.cell-actions  { width: 300px; flex-shrink: 0; display: flex; justify-content: flex-end; gap: 0.4rem; }
 .badge-you {
   margin-left: 0.5rem;
   padding: 0.1rem 0.4rem;
@@ -525,6 +564,16 @@ const selectedId = computed(() => route.params.id)
   font-size: 0.8rem;
 }
 .btn-change-password:hover { background: #0d47a1; }
+.btn-permissions {
+  padding: 0.25rem 0.6rem;
+  background: #fff;
+  color: #555;
+  border: 1px solid #999;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.btn-permissions:hover { background: #f0f0f0; }
 .empty {
   padding: 2rem 1rem;
   color: #999;

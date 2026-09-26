@@ -28,6 +28,7 @@ import Setup from './Setup.vue';
 import CloudConnectSetup from './CloudConnectSetup.vue';
 import CloudConnectCallback from './CloudConnectCallback.vue';
 import CloudLoginCallback from './CloudLoginCallback.vue';
+import CloudLinkCallback from './CloudLinkCallback.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: Login, meta: { public: true } },
@@ -71,6 +72,7 @@ const routes = [
     component: UserTable,
     children: [{ path: ':id', name: 'UserDetail', component: UserDetail }]
   },
+  { path: '/cloud-link/callback', name: 'CloudLinkCallback', component: CloudLinkCallback },
   { path: '/ai-control', name: 'AIControl', component: AIControlTable },
   { path: '/ai-control/new', name: 'AIControlNew', component: AIControlNewChat },
   { path: '/ai-control/settings', name: 'AIControlSettings', component: AIControlSettings },

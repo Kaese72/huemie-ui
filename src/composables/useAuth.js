@@ -28,6 +28,22 @@ const currentUserId = computed(() => {
   return decodeJwtPayload(useToken.value)?.id ?? null
 })
 
+// The "hp" claim - see authentication/usertoken.Permissions. Absent, or with
+// no "admin" key, means the token carries no elevated access.
+const currentPermissions = computed(() => {
+  if (!useToken.value) return null
+  return decodeJwtPayload(useToken.value)?.hp ?? null
+})
+
+const currentUserIsAdmin = computed(() => currentPermissions.value?.admin === true)
+
+// hasModify mirrors the server's Permissions.HasModify: admin bypasses
+// everything, otherwise the resource's own "m" grant decides.
+function hasModify(resourceCode) {
+  if (currentUserIsAdmin.value) return true
+  return currentPermissions.value?.[resourceCode]?.m === '*'
+}
+
 const LOGIN_URL = '/authentication-service/v0/authentication/login'
 const LOGOUT_URL = '/authentication-service/v0/authentication/logout'
 const CLOUD_LOGIN_URL = '/authentication-service/v0/authentication/cloud'
@@ -137,6 +153,8 @@ export function useAuth() {
     isAuthenticated,
     isInitialized,
     currentUserId,
+    currentUserIsAdmin,
+    hasModify,
     init,
     login,
     logout,
