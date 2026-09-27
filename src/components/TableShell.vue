@@ -1,17 +1,18 @@
 <script setup>
 // TableShell is the shared div-grid table used by every list view
 // (Adapters/Devices/Groups/Rules/Users/AI Control). It owns the grid
-// markup/CSS, the pagination footer, the sortable-header click/arrow UI,
-// and wiring a ColumnFilter into any column that declares itself
-// filterable. It is purely presentational/stateless: page/filter/sort
-// STATE and the actual fetch live in the parent, via useTableList.js.
+// markup/CSS, the pagination footer, and delegates each header cell to
+// TableHeaderCell, which owns the combined ordering/filtering dialog for
+// any column that declares itself sortable and/or filterable. TableShell
+// itself is purely presentational/stateless: page/filter/sort STATE and
+// the actual fetch live in the parent, via useTableList.js.
 //
 // Custom per-column cell content (badges, action buttons, tooltips, ...)
 // is provided by the parent through a `cell-<key>` scoped slot; slot
 // content is compiled in the PARENT's template scope, so each page's own
 // <style scoped> classes for that content keep working unchanged.
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import ColumnFilter from './ColumnFilter.vue'
+import TableHeaderCell from './TableHeaderCell.vue'
 import { ROW_HEIGHT_PX, HEADER_HEIGHT_PX, MIN_PAGE_SIZE, RESIZE_DEBOUNCE_MS, DETAIL_OVERLAY_WIDTH } from '../composables/tableLayout.js'
 
 const props = defineProps({
@@ -22,6 +23,10 @@ const props = defineProps({
   columnFilters: { type: Object, default: () => ({}) },
   sort: { type: Object, default: null },
   attributeStats: { type: Object, default: () => ({}) },
+  // Whether a fetch this table triggered is currently in flight - fed to
+  // each column's header dialog so it can show "applying" vs. "applied"
+  // for the filter edit it just debounced into a request.
+  loading: { type: Boolean, default: false },
   currentPage: { type: Number, required: true },
   totalPages: { type: Number, required: true },
   pageWindow: { type: Array, required: true },
@@ -100,54 +105,58 @@ const shellStyle = computed(() => (
 // columns. A hard fixed width is what makes them stay pixel-identical, at
 // the cost of trailing empty space if the table is wider than its content
 // (acceptable - the alternative is columns drifting).
+//
+// columnMinWidths (from each TableHeaderCell, once it knows how much room
+// its own label/icons actually need) and columnWidths (only set once a
+// column's resize handle is dragged) both live only in this component's
+// memory - neither is persisted, so a reload goes back to each column's
+// declared `width` (or the shared default) floored by its header's
+// min-width.
+const columnMinWidths = ref({})
+const columnWidths = ref({})
+
+function onMinWidthComputed(col, px) {
+  if (columnMinWidths.value[col.key] === px) return
+  columnMinWidths.value = { ...columnMinWidths.value, [col.key]: px }
+}
+
+function onResizeColumn(col, px) {
+  columnWidths.value = { ...columnWidths.value, [col.key]: px }
+}
+
+function baseWidthOf(col) {
+  const override = columnWidths.value[col.key]
+  if (override != null) return override
+  const parsed = col.width ? parseInt(col.width, 10) : NaN
+  return Number.isFinite(parsed) ? parsed : 240
+}
+
 function cellStyle(col) {
-  return { flex: `0 0 ${col.width || '240px'}` }
+  const min = columnMinWidths.value[col.key] || 0
+  return { flex: `0 0 ${Math.max(baseWidthOf(col), min)}px` }
 }
 
-function onHeaderClick(col) {
-  if (!col.sortable) return
-  let next
-  if (!props.sort || props.sort.field !== col.key) {
-    next = { field: col.key, direction: 'asc' }
-  } else if (props.sort.direction === 'asc') {
-    next = { field: col.key, direction: 'desc' }
-  } else {
-    next = null
-  }
-  emit('sort-change', next)
-}
-
-function sortIndicator(col) {
-  if (!props.sort || props.sort.field !== col.key) return ''
-  return props.sort.direction === 'asc' ? '▲' : '▼'
-}
 </script>
 
 <template>
   <div class="table-shell" :style="shellStyle">
     <div class="table-wrapper" ref="tableWrapperRef">
       <div class="table-header">
-        <div
+        <TableHeaderCell
           v-for="col in columns"
           :key="col.key"
-          class="table-cell header-cell"
-          :class="{ sortable: col.sortable }"
+          :col="col"
+          :sort="sort"
+          :filter-value="columnFilters[col.key] || null"
+          :stats="col.filter && col.filter.type === 'attribute' ? attributeStats[col.filter.statsKey] : null"
+          :loading="loading"
           :style="cellStyle(col)"
-          @click="onHeaderClick(col)"
-        >
-          <span class="header-label">{{ col.label }}</span>
-          <span v-if="col.sortable" class="sort-indicator">{{ sortIndicator(col) }}</span>
-          <ColumnFilter
-            v-if="col.filter"
-            :type="col.filter.type"
-            :stats="col.filter.type === 'attribute' ? attributeStats[col.filter.statsKey] : null"
-            :operators="col.filter.operators || null"
-            :active="!!columnFilters[col.key]"
-            @click.stop
-            @apply="filter => emit('filter-apply', col.key, filter)"
-            @clear="() => emit('filter-clear', col.key)"
-          />
-        </div>
+          @sort-change="next => emit('sort-change', next)"
+          @filter-apply="filter => emit('filter-apply', col.key, filter)"
+          @filter-clear="() => emit('filter-clear', col.key)"
+          @min-width-computed="px => onMinWidthComputed(col, px)"
+          @resize-column="px => onResizeColumn(col, px)"
+        />
       </div>
       <div
         v-for="row in rows"
@@ -188,6 +197,12 @@ function sortIndicator(col) {
   flex-direction: column;
   overflow: hidden;
   transition: width 0.2s;
+  /* Divides the whole table area (header, rows, footer) from the
+     surrounding page on every side, not just the shadow that previously
+     only separated the header from what's below it. */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
 }
 .table-wrapper {
   width: 100%;
@@ -210,6 +225,7 @@ function sortIndicator(col) {
   font-weight: bold;
   background: #f5f5f5;
   border-bottom: 2px solid #ddd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   /* top-only: .table-wrapper's overflow-y is hidden (pagination, not
      vertical scroll, changes pages), so this is inert today but harmless -
      left:0 was deliberately dropped: it stuck the header at the viewport's
@@ -234,25 +250,17 @@ function sortIndicator(col) {
   text-overflow: ellipsis;
   white-space: nowrap;
   box-sizing: border-box;
+  /* Same left/right divider treatment as .header-cell (TableHeaderCell.vue),
+     so rows read as distinct columns rather than one continuous strip -
+     previously only the header had this. */
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  margin-left: -1px;
 }
-.header-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-.header-cell.sortable {
-  cursor: pointer;
-}
-.header-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.sort-indicator {
-  font-size: 0.7rem;
-  color: #1890ff;
-  flex-shrink: 0;
-}
+/* .header-cell's own layout (flex/gap/clickable cursor), .header-label,
+   .sort-indicator and .filter-dot are all styled in TableHeaderCell.vue,
+   which owns that markup now - only .table-cell above (shared with plain
+   data cells) still needs to live here. */
 
 /* Pagination footer */
 .pagination-footer {

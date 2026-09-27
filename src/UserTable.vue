@@ -6,6 +6,7 @@ import { useAuth } from './composables/useAuth.js'
 import PermissionsDialog from './components/PermissionsDialog.vue'
 import TableShell from './components/TableShell.vue'
 import DetailOverlay from './components/DetailOverlay.vue'
+import BoolBadge from './components/BoolBadge.vue'
 import { useTableList } from './composables/useTableList.js'
 
 const { currentUserId, currentUserIsAdmin, hasModify } = useAuth()
@@ -65,6 +66,7 @@ const {
   onColumnFilterApply,
   onColumnFilterClear,
   onSortChange,
+  loading,
   refresh,
 } = useTableList({ fetchPage })
 
@@ -186,6 +188,7 @@ const selectedId = computed(() => route.params.id)
         :selected-id="selectedId"
         :column-filters="columnFilters"
         :sort="sort"
+        :loading="loading"
         :current-page="currentPage"
         :total-pages="totalPages"
         :page-window="pageWindow"
@@ -204,9 +207,9 @@ const selectedId = computed(() => route.params.id)
         </template>
         <template #cell-name="{ row }">{{ [row.name, row.surname].filter(Boolean).join(' ') || '—' }}</template>
         <template #cell-email="{ row }">{{ row.email || '—' }}</template>
-        <template #cell-local="{ row }"><span :class="row.localLogin ? 'flag-yes' : 'flag-no'">{{ row.localLogin ? '✓' : '—' }}</span></template>
-        <template #cell-cloud="{ row }"><span :class="row.cloudLogin ? 'flag-yes' : 'flag-no'">{{ row.cloudLogin ? '✓' : '—' }}</span></template>
-        <template #cell-isAdmin="{ row }"><span :class="row.permissions?.admin ? 'flag-yes' : 'flag-no'">{{ row.permissions?.admin ? '✓' : '—' }}</span></template>
+        <template #cell-local="{ row }"><BoolBadge :value="!!row.localLogin" /></template>
+        <template #cell-cloud="{ row }"><BoolBadge :value="!!row.cloudLogin" /></template>
+        <template #cell-isAdmin="{ row }"><BoolBadge :value="!!row.permissions?.admin" /></template>
         <template #cell-actions="{ row }">
           <div class="actions-cell">
             <button
@@ -381,8 +384,6 @@ const selectedId = computed(() => route.params.id)
 }
 .btn-create:hover { background: #369870; }
 .error { color: red; padding: 0.5rem; }
-.flag-yes { color: #2e7d32; font-weight: bold; }
-.flag-no  { color: #bbb; }
 .actions-cell { display: flex; justify-content: flex-end; gap: 0.4rem; width: 100%; }
 .badge-you {
   margin-left: 0.5rem;

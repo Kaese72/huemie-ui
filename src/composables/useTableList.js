@@ -30,6 +30,11 @@ export function useTableList({ fetchPage }) {
   // "genuinely no rows yet" apart from "haven't loaded yet" (e.g. to decide
   // whether to redirect on a truly-empty list - see AIControlTable).
   const ready = ref(false)
+  // loading is true for the duration of any in-flight fetch (page/filter/sort
+  // change alike). TableShell feeds it to each column's header dialog so a
+  // just-debounced filter edit can show "applying" until the fetch it
+  // triggered actually resolves, then "applied".
+  const loading = ref(false)
   let sized = false
 
   const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
@@ -56,6 +61,7 @@ export function useTableList({ fetchPage }) {
   }
 
   async function fetchCurrentPage() {
+    loading.value = true
     try {
       const offset = currentPage.value * pageSize.value
       const { rows: newRows, total } = await fetchPage({
@@ -79,6 +85,7 @@ export function useTableList({ fetchPage }) {
       error.value = err
     } finally {
       ready.value = true
+      loading.value = false
     }
   }
 
@@ -131,6 +138,7 @@ export function useTableList({ fetchPage }) {
     rows,
     error,
     ready,
+    loading,
     columnFilters,
     sort,
     currentPage,

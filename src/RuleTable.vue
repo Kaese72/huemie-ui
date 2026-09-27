@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import TableShell from './components/TableShell.vue'
 import DetailOverlay from './components/DetailOverlay.vue'
+import BoolBadge from './components/BoolBadge.vue'
 import { useTableList } from './composables/useTableList.js'
 
 const router = useRouter()
@@ -49,6 +50,7 @@ const {
   onColumnFilterApply,
   onColumnFilterClear,
   onSortChange,
+  loading,
   refresh,
 } = useTableList({ fetchPage })
 
@@ -101,6 +103,7 @@ function onRuleDeleted() {
         :selected-id="selectedId"
         :column-filters="columnFilters"
         :sort="sort"
+        :loading="loading"
         :current-page="currentPage"
         :total-pages="totalPages"
         :page-window="pageWindow"
@@ -113,7 +116,7 @@ function onRuleDeleted() {
         @sort-change="onSortChange"
         @resize="onResize"
       >
-        <template #cell-enabled="{ row }">{{ row.enabled ? '✓' : '—' }}</template>
+        <template #cell-enabled="{ row }"><BoolBadge :value="row.enabled" /></template>
         <template #cell-actions="{ row }">{{ row.actions?.length ?? 0 }}</template>
         <template #cell-cooldown="{ row }">
           <span :class="{ 'backoff-active': isCooldownActive(row) }">

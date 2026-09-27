@@ -43,6 +43,7 @@ const {
   onColumnFilterApply,
   onColumnFilterClear,
   onSortChange,
+  loading,
   refresh,
 } = useTableList({ fetchPage })
 
@@ -101,6 +102,7 @@ async function forgetConversation(conversation, event) {
       :selected-id="null"
       :column-filters="columnFilters"
       :sort="sort"
+      :loading="loading"
       :current-page="currentPage"
       :total-pages="totalPages"
       :page-window="pageWindow"

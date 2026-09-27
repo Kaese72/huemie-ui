@@ -7,6 +7,7 @@ import { extractAttribute, extractAttributeUpdated } from './utils/deviceUtil.js
 import { useAuth } from './composables/useAuth.js'
 import TableShell from './components/TableShell.vue'
 import DetailOverlay from './components/DetailOverlay.vue'
+import AttributeValue from './components/AttributeValue.vue'
 import { useTableList } from './composables/useTableList.js'
 
 const { useToken } = useAuth()
@@ -30,6 +31,12 @@ const columns = [
   ...knownAttributes.map(attr => ({
     key: 'attribute.' + attr,
     label: attr,
+    // Attribute values are typically short (a boolean, a small number, a
+    // short color/text value) - a smaller default than the shared 240px
+    // fallback keeps a wide device table from wasting space on them. The
+    // header's own min-width (enough to fit its label + icons) still
+    // floors this if the attribute name itself is longer than 50px.
+    width: '50px',
     filter: { type: 'attribute', statsKey: attr },
   })),
 ]
@@ -77,6 +84,7 @@ const {
   onColumnFilterApply,
   onColumnFilterClear,
   onSortChange,
+  loading,
   refresh,
 } = useTableList({ fetchPage })
 
@@ -234,6 +242,7 @@ const selectedId = computed(() => route.params.id)
         :selected-id="selectedId"
         :column-filters="columnFilters"
         :sort="sort"
+        :loading="loading"
         :attribute-stats="attributeStats"
         :current-page="currentPage"
         :total-pages="totalPages"
@@ -248,7 +257,7 @@ const selectedId = computed(() => route.params.id)
         @resize="onResize"
       >
         <template v-for="attr in knownAttributes" :key="attr" #[`cell-attribute.${attr}`]="{ row }">
-          <span :title="getAttributeTooltip(row, attr)">{{ extractAttribute(row, attr) }}</span>
+          <AttributeValue :value="extractAttribute(row, attr)" :tooltip="getAttributeTooltip(row, attr)" />
         </template>
       </TableShell>
       <DetailOverlay v-if="selectedId">

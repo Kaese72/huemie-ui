@@ -42,6 +42,7 @@ const {
   onColumnFilterApply,
   onColumnFilterClear,
   onSortChange,
+  loading,
   refresh,
 } = useTableList({ fetchPage })
 
@@ -82,6 +83,7 @@ const selectedId = computed(() => route.params.id)
         :selected-id="selectedId"
         :column-filters="columnFilters"
         :sort="sort"
+        :loading="loading"
         :current-page="currentPage"
         :total-pages="totalPages"
         :page-window="pageWindow"
