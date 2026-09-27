@@ -148,6 +148,7 @@ async function forgetConversation(conversation, event) {
 }
 .ai-control-table h1 {
   flex-shrink: 0;
+  margin-bottom: 0.5rem;
 }
 .status-badge {
   padding: 0.15rem 0.5rem;

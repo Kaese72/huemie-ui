@@ -169,7 +169,7 @@ async function startConversation() {
   padding-right: 1rem;
   flex-shrink: 0;
 }
-.pane-header h1 { margin: 0 0 0.5rem 0; }
+.pane-header h1 { margin-bottom: 0.5rem; }
 .back-link { color: #666; text-decoration: none; font-size: 0.9rem; }
 .back-link:hover { color: #42b983; }
 .error { color: red; padding: 0.5rem; }

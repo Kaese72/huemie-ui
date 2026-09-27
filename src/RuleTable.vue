@@ -164,7 +164,7 @@ function onRuleDeleted() {
   flex-shrink: 0;
 }
 .pane-header h1 {
-  margin: 0 0 0.5rem 0;
+  margin-bottom: 0.5rem;
 }
 .btn-create {
   padding: 0.4rem 1rem;

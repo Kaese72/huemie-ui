@@ -277,6 +277,9 @@ const selectedId = computed(() => route.params.id)
   display: flex;
   flex-direction: column;
 }
+.device-table h1 {
+  margin-bottom: 0.5rem;
+}
 .split-content {
   flex: 1 1 0;
   min-height: 0;

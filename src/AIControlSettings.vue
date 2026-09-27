@@ -121,7 +121,7 @@ async function replaceValue(key) {
   padding-right: 1rem;
   flex-shrink: 0;
 }
-.pane-header h1 { margin: 0 0 0.5rem 0; }
+.pane-header h1 { margin-bottom: 0.5rem; }
 .error { color: red; padding: 0.5rem; }
 .empty { padding: 1rem; color: #999; font-style: italic; text-align: center; }
 .empty p { margin: 0.25rem 0; }

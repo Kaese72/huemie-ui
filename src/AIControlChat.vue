@@ -206,7 +206,7 @@ const isToolEntry = (type) => type.startsWith('AGENT_GENERIC_TOOL') || type.incl
   flex-shrink: 0;
 }
 .pane-header h1 {
-  margin: 0 0 0.5rem 0;
+  margin-bottom: 0.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
