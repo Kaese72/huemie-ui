@@ -1,10 +1,11 @@
 <script setup>
-
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
+import TableShell from './components/TableShell.vue'
+import DetailOverlay from './components/DetailOverlay.vue'
+import { useTableList } from './composables/useTableList.js'
 
-const adapters = ref([])
 const error = ref(null)
 const creatingAdapter = ref(false)
 const showCreateDialog = ref(false)
@@ -16,17 +17,42 @@ const newAdapter = ref({
 const router = useRouter()
 const route = useRoute()
 
-onMounted(fetchAdapters)
+const columns = [
+  { key: 'id', label: 'ID', width: '60px', sortable: true },
+  { key: 'name', label: 'Name', sortable: true, filter: { type: 'text' } },
+  { key: 'imageName', label: 'Image', sortable: true, filter: { type: 'text' } },
+  { key: 'imageTag', label: 'Tag', sortable: true, filter: { type: 'text' } },
+  { key: 'created', label: 'Created', width: '200px', sortable: true, filter: { type: 'date' } },
+  { key: 'updated', label: 'Updated', width: '200px', sortable: true, filter: { type: 'date' } },
+  { key: 'synced', label: 'Synced' },
+]
 
-async function fetchAdapters() {
-  try {
-    const response = await axios.get('/adapter-attendant/v1/adapters')
-    adapters.value = response.data || []
-    error.value = null
-  } catch (err) {
-    error.value = err
-  }
+async function fetchPage({ offset, limit, filters, sort }) {
+  const params = { offset, limit }
+  if (filters) params.filters = filters
+  if (sort) params.sort = sort
+  const response = await axios.get('/adapter-attendant/v1/adapters', { params })
+  const rows = response.data || []
+  const totalHeader = response.headers['x-total-count']
+  return { rows, total: totalHeader != null ? parseInt(totalHeader, 10) : rows.length }
 }
+
+const {
+  rows: adapters,
+  columnFilters,
+  sort,
+  currentPage,
+  totalPages,
+  pageWindow,
+  showFirst,
+  showLast,
+  goToPage,
+  onResize,
+  onColumnFilterApply,
+  onColumnFilterClear,
+  onSortChange,
+  refresh,
+} = useTableList({ fetchPage })
 
 async function createAdapter() {
   if (!newAdapter.value.name || !newAdapter.value.imageName || !newAdapter.value.imageTag) {
@@ -40,7 +66,8 @@ async function createAdapter() {
       imageTag: newAdapter.value.imageTag
     })
     const created = response.data
-    adapters.value = [...adapters.value, created]
+    // Pagination/total count shift when an adapter is added, so refetch rather than pushing locally.
+    await refresh()
     newAdapter.value = { name: '', imageName: '', imageTag: '' }
     showCreateDialog.value = false
     error.value = null
@@ -64,12 +91,12 @@ function closeCreateDialog() {
   newAdapter.value = { name: '', imageName: '', imageTag: '' }
 }
 
-function onRowClick(adapterId) {
-  if (selectedId.value === String(adapterId)) {
+function onRowClick(adapter) {
+  if (String(adapter.id) === String(selectedId.value)) {
     // If already selected, close detail view
     router.push({ name: 'Adapters' });
   } else {
-    router.push({ name: 'AdapterDetail', params: { id: adapterId } });
+    router.push({ name: 'AdapterDetail', params: { id: adapter.id } });
   }
 }
 
@@ -84,55 +111,41 @@ const selectedId = computed(() => route.params.id)
     </div>
     <div v-if="error">Error: {{ error.message }}</div>
     <div class="split-content">
-      <div class="table-wrapper" :class="{ half: selectedId }">
-        <div class="table-header">
-          <div class="table-cell id-cell">ID</div>
-          <div class="table-cell name-cell">Name</div>
-          <div class="table-cell">Image</div>
-          <div class="table-cell">Tag</div>
-          <div class="table-cell">Synced</div>
-        </div>
-        <div v-for="adapter in adapters" :key="adapter.id" @click="onRowClick(adapter.id)" :class="['table-row', { selected: String(adapter.id) === selectedId }]">
-          <div class="table-cell id-cell" :title="String(adapter.id)">{{ adapter.id }}</div>
-          <div class="table-cell name-cell" :title="adapter.name">{{ adapter.name }}</div>
-          <div class="table-cell" :title="adapter.imageName">{{ adapter.imageName }}</div>
-          <div class="table-cell" :title="adapter.imageTag">{{ adapter.imageTag }}</div>
-          <div class="table-cell" :title="adapter.synced || 'Not synced'">{{ adapter.synced || 'Not synced' }}</div>
-        </div>
-      </div>
-      <div v-if="selectedId" class="adapter-detail-half">
+      <TableShell
+        :columns="columns"
+        :rows="adapters"
+        :selected-id="selectedId"
+        :column-filters="columnFilters"
+        :sort="sort"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :page-window="pageWindow"
+        :show-first="showFirst"
+        :show-last="showLast"
+        @row-click="onRowClick"
+        @go-to-page="goToPage"
+        @filter-apply="onColumnFilterApply"
+        @filter-clear="onColumnFilterClear"
+        @sort-change="onSortChange"
+        @resize="onResize"
+      >
+        <template #cell-created="{ row }">{{ new Date(row.created).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
+        <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
+        <template #cell-synced="{ row }">{{ row.synced || 'Not synced' }}</template>
+      </TableShell>
+      <DetailOverlay v-if="selectedId">
         <router-view />
-      </div>
+      </DetailOverlay>
     </div>
-    <div class="pagination-footer"></div>
 
     <div v-if="showCreateDialog" class="dialog-backdrop">
       <div class="dialog">
         <h3>Create Adapter</h3>
-        <input
-          v-model="newAdapter.name"
-          class="create-input create-name"
-          type="text"
-          placeholder="Name"
-        />
-        <input
-          v-model="newAdapter.imageName"
-          class="create-input"
-          type="text"
-          placeholder="Image name"
-        />
-        <input
-          v-model="newAdapter.imageTag"
-          class="create-input"
-          type="text"
-          placeholder="Image tag"
-        />
+        <input v-model="newAdapter.name" class="create-input create-name" type="text" placeholder="Name" />
+        <input v-model="newAdapter.imageName" class="create-input" type="text" placeholder="Image name" />
+        <input v-model="newAdapter.imageTag" class="create-input" type="text" placeholder="Image tag" />
         <div class="dialog-actions">
-          <button
-            class="dialog-save-button"
-            :disabled="creatingAdapter || !newAdapter.name || !newAdapter.imageName || !newAdapter.imageTag"
-            @click="createAdapter"
-          >
+          <button class="dialog-save-button" :disabled="creatingAdapter || !newAdapter.name || !newAdapter.imageName || !newAdapter.imageTag" @click="createAdapter">
             {{ creatingAdapter ? 'Saving...' : 'Save' }}
           </button>
           <button class="dialog-cancel-button" :disabled="creatingAdapter" @click="closeCreateDialog">Cancel</button>
@@ -147,52 +160,35 @@ const selectedId = computed(() => route.params.id)
   width: 100%;
   height: 100%;
   min-height: 0;
-  position: relative;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-.split-content {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
   overflow: hidden;
-}
-/* Reserved for future pagination controls; adapter-attendant doesn't paginate adapters yet. */
-.pagination-footer {
-  flex: 0 0 auto;
-  height: 44px;
-  border-top: 2px solid #ddd;
-  background: #f5f5f5;
 }
 .title-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
+  justify-content: space-between;
+  padding-right: 1rem;
+  flex-shrink: 0;
 }
-.create-input {
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-  margin-bottom: 0.6rem;
-}
-.create-name {
-  min-width: 0;
+.title-row h1 {
+  margin: 0 0 0.5rem 0;
 }
 .create-button {
-  padding: 0.45rem 0.8rem;
-  border: 1px solid #2e7d32;
-  background: #2e7d32;
+  padding: 0.4rem 1rem;
+  background: #42b983;
   color: #fff;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 0.9rem;
 }
-.create-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.create-button:hover { background: #369870; }
+.split-content {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 .dialog-backdrop {
   position: fixed;
@@ -203,120 +199,50 @@ const selectedId = computed(() => route.params.id)
   justify-content: center;
   z-index: 20;
 }
-
 .dialog {
-  width: 420px;
+  width: 360px;
   max-width: calc(100vw - 2rem);
   background: #fff;
   border-radius: 6px;
   border: 1px solid #ddd;
   padding: 1rem;
 }
-
 .dialog h3 {
   margin-top: 0;
   margin-bottom: 0.8rem;
 }
-
+.create-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  margin-bottom: 0.6rem;
+}
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
 }
-
 .dialog-save-button,
 .dialog-cancel-button {
   padding: 0.45rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
 }
-
 .dialog-save-button {
   border: 1px solid #2e7d32;
   background: #2e7d32;
   color: #fff;
 }
-
 .dialog-save-button:disabled,
 .dialog-cancel-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-
 .dialog-cancel-button {
   border: 1px solid #d0d0d0;
   background: #f4f4f4;
   color: #222;
-}
-
-.adapter-detail-half {
-  flex: 1;
-  max-width: 50%;
-  border-left: 1px solid #ddd;
-  padding-left: 2rem;
-  background: #fff;
-  overflow-y: auto;
-}
-/* Table-like flex layout */
-.table-wrapper {
-  width: 100%;
-  height: 100%;
-  flex: 1 1 0;
-  min-width: 0;
-  transition: flex 0.3s;
-  overflow-x: auto;
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-.table-wrapper.half {
-  flex: 1;
-  max-width: 50%;
-}
-.table-header, .table-row {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-width: max-content;
-  box-sizing: border-box;
-}
-.table-header {
-  font-weight: bold;
-  background: #f5f5f5;
-  border-bottom: 2px solid #ddd;
-  position: sticky;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  box-sizing: border-box;
-}
-.table-row {
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-  transition: background 0.2s;
-}
-.table-row.selected {
-  background: #e6f7ff;
-}
-.table-cell {
-  min-width: 240px;
-  max-width: 240px;
-  width: 240px;
-  padding: 0.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  box-sizing: border-box;
-}
-.name-cell {
-  min-width: 300px;
-  max-width: 300px;
-  width: 300px;
-  font-weight: bold;
-}
-.id-cell {
-  min-width: 80px;
-  max-width: 80px;
-  width: 80px;
-  font-weight: bold;
 }
 </style>

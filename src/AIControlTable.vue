@@ -1,37 +1,67 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import TableShell from './components/TableShell.vue'
+import { useTableList } from './composables/useTableList.js'
 
-const conversations = ref([])
-const error = ref(null)
-const loading = ref(true)
 const router = useRouter()
-
 const openMenuId = ref(null)
 
-async function fetchConversations() {
-  try {
-    const response = await axios.get('/chatbot-service/v0/conversations')
-    conversations.value = response.data.conversations ?? []
-    error.value = null
-  } catch (err) {
-    error.value = err
-  }
+const columns = [
+  { key: 'id', label: 'ID', width: '60px' },
+  { key: 'name', label: 'Name', filter: { type: 'text' } },
+  { key: 'status', label: 'Status', width: '140px', filter: { type: 'text', operators: ['text-eq'] } },
+  { key: 'initiative', label: 'Turn', width: '100px', filter: { type: 'text', operators: ['text-eq'] } },
+  { key: 'updated', label: 'Updated', width: '220px', sortable: true },
+  { key: 'actions', label: '', width: '48px' },
+]
+
+async function fetchPage({ offset, limit, filters, sort }) {
+  const params = { offset, limit }
+  if (filters) params.filters = filters
+  if (sort) params.sort = sort
+  const response = await axios.get('/chatbot-service/v0/conversations', { params })
+  const rows = response.data?.conversations ?? []
+  const totalHeader = response.headers['x-total-count']
+  return { rows, total: totalHeader != null ? parseInt(totalHeader, 10) : rows.length }
 }
+
+const {
+  rows: conversations,
+  error,
+  ready,
+  columnFilters,
+  sort,
+  currentPage,
+  totalPages,
+  pageWindow,
+  showFirst,
+  showLast,
+  goToPage,
+  onResize,
+  onColumnFilterApply,
+  onColumnFilterClear,
+  onSortChange,
+  refresh,
+} = useTableList({ fetchPage })
+
+// Per the AI Control design: with zero conversations - and no filter
+// narrowing them there - go straight to the "start a new chat" flow rather
+// than flashing an empty table. A filter that happens to match nothing does
+// NOT redirect: that's just an empty filtered result, not "you have no
+// conversations at all".
+watch([ready, conversations, columnFilters], ([isReady, rows, filters]) => {
+  if (isReady && rows.length === 0 && Object.keys(filters).length === 0 && !error.value) {
+    router.replace({ name: 'AIControlNew' })
+  }
+})
 
 function closeMenu() {
   openMenuId.value = null
 }
 
-onMounted(async () => {
-  await fetchConversations()
-  loading.value = false
-  // Per the AI Control design: with zero conversations, go straight to the
-  // "start a new chat" flow rather than flashing an empty table.
-  if (conversations.value.length === 0 && !error.value) {
-    router.replace({ name: 'AIControlNew' })
-  }
+onMounted(() => {
   window.addEventListener('click', closeMenu)
 })
 
@@ -51,13 +81,10 @@ function toggleMenu(conversationId, event) {
 async function forgetConversation(conversation, event) {
   event.stopPropagation()
   openMenuId.value = null
-  // Mirrors the API's own guard (persistence.ErrConversationNotAwaitingInput,
-  // HTTP/409): a conversation can only be forgotten while the user holds
-  // initiative, not while the agent is still working on it.
   if (!confirm(`Forget conversation "${conversation.name}"? This cannot be undone.`)) return
   try {
     await axios.post(`/chatbot-service/v0/conversations/${conversation.id}/forget`)
-    await fetchConversations()
+    await refresh()
   } catch (err) {
     error.value = err
   }
@@ -65,52 +92,51 @@ async function forgetConversation(conversation, event) {
 </script>
 
 <template>
-  <div class="ai-control-view">
-    <div class="pane-header">
-      <h1>AI Control</h1>
-      <button class="btn-create" @click="router.push({ name: 'AIControlNew' })">+ New chat</button>
-    </div>
-    <div v-if="error" class="error">Error: {{ error.message }}</div>
-    <div v-else-if="loading" class="empty">Loading…</div>
-    <div v-else class="table-wrapper">
-      <div class="table-header">
-        <div class="cell cell-id">ID</div>
-        <div class="cell cell-name">Name</div>
-        <div class="cell cell-status">Status</div>
-        <div class="cell cell-initiative">Turn</div>
-        <div class="cell cell-updated">Updated</div>
-        <div class="cell cell-actions"></div>
-      </div>
-      <div
-        v-for="conversation in conversations" :key="conversation.id"
-        class="table-row"
-        @click="onRowClick(conversation)"
-      >
-        <div class="cell cell-id">{{ conversation.id }}</div>
-        <div class="cell cell-name">{{ conversation.name }}</div>
-        <div class="cell cell-status">
-          <span class="status-badge" :class="conversation.status === 'AGENT_IN_PROGRESS' ? 'in-progress' : 'idle'">
-            {{ conversation.status === 'AGENT_IN_PROGRESS' ? 'Thinking…' : 'Waiting for you' }}
-          </span>
+  <div class="ai-control-table">
+    <h1>AI Control</h1>
+    <div v-if="error">Error: {{ error.message }}</div>
+    <TableShell
+      :columns="columns"
+      :rows="conversations"
+      :selected-id="null"
+      :column-filters="columnFilters"
+      :sort="sort"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :page-window="pageWindow"
+      :show-first="showFirst"
+      :show-last="showLast"
+      @row-click="onRowClick"
+      @go-to-page="goToPage"
+      @filter-apply="onColumnFilterApply"
+      @filter-clear="onColumnFilterClear"
+      @sort-change="onSortChange"
+      @resize="onResize"
+    >
+      <template #cell-status="{ row }">
+        <span class="status-badge" :class="row.status === 'AGENT_IN_PROGRESS' ? 'in-progress' : 'idle'">
+          {{ row.status === 'AGENT_IN_PROGRESS' ? 'Thinking…' : 'Waiting for you' }}
+        </span>
+      </template>
+      <template #cell-initiative="{ row }">{{ row.initiative === 'AGENT' ? 'Agent' : 'User' }}</template>
+      <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
+      <template #cell-actions="{ row }">
+        <button class="menu-btn" @click="toggleMenu(row.id, $event)">⋮</button>
+        <div v-if="openMenuId === row.id" class="menu" @click.stop>
+          <button class="menu-item danger" @click="forgetConversation(row, $event)">Forget conversation</button>
         </div>
-        <div class="cell cell-initiative">{{ conversation.initiative === 'AGENT' ? 'Agent' : 'User' }}</div>
-        <div class="cell cell-updated">{{ new Date(conversation.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</div>
-        <div class="cell cell-actions">
-          <button class="menu-btn" @click="toggleMenu(conversation.id, $event)">⋮</button>
-          <div v-if="openMenuId === conversation.id" class="menu" @click.stop>
-            <button class="menu-item danger" @click="forgetConversation(conversation, $event)">Forget conversation</button>
-          </div>
+      </template>
+      <template #empty>
+        <div v-if="ready" class="empty">
+          <p>No conversations match the current filters.</p>
         </div>
-      </div>
-      <div v-if="conversations.length === 0" class="empty">
-        <p>No conversations yet.</p>
-      </div>
-    </div>
+      </template>
+    </TableShell>
   </div>
 </template>
 
 <style scoped>
-.ai-control-view {
+.ai-control-table {
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -118,111 +144,52 @@ async function forgetConversation(conversation, event) {
   flex-direction: column;
   overflow: hidden;
 }
-.pane-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: 1rem;
+.ai-control-table h1 {
   flex-shrink: 0;
 }
-.pane-header h1 { margin: 0 0 0.5rem 0; }
-.btn-create {
-  padding: 0.4rem 1rem;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
+.status-badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
-.btn-create:hover { background: #369870; }
-.error { color: red; padding: 0.5rem; }
-.table-wrapper {
-  flex: 1 1 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-.table-header, .table-row {
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #eee;
-  height: 40px;
-  box-sizing: border-box;
-}
-.table-header {
-  font-weight: bold;
-  background: #f5f5f5;
-  border-bottom: 2px solid #ddd;
-  position: sticky;
-  top: 0;
-}
-.table-row {
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.table-row:hover { background: #f0f9f5; }
-.cell {
-  padding: 0.5rem 0.75rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.cell-id         { width: 60px;  flex-shrink: 0; font-weight: bold; }
-.cell-name       { flex: 1; min-width: 0; }
-.cell-status     { width: 140px; flex-shrink: 0; }
-.cell-initiative { width: 80px;  flex-shrink: 0; }
-.cell-updated    { width: 220px; flex-shrink: 0; color: #777; font-size: 0.85rem; }
-.cell-actions    { width: 44px;  flex-shrink: 0; position: relative; overflow: visible; text-align: center; }
+.status-badge.idle { background: #e8f5e9; color: #2e7d32; }
+.status-badge.in-progress { background: #fff3e0; color: #e65100; }
 .menu-btn {
+  background: none;
   border: none;
-  background: transparent;
-  cursor: pointer;
   font-size: 1.1rem;
-  line-height: 1;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  color: #555;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  color: #666;
 }
-.menu-btn:hover { background: #e6e6e6; }
+.menu-btn:hover { color: #222; }
 .menu {
   position: absolute;
-  top: 100%;
-  right: 0.5rem;
-  z-index: 20;
+  right: 1rem;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  min-width: 170px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  z-index: 10;
 }
 .menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
   border: none;
-  background: #fff;
+  background: none;
   text-align: left;
-  padding: 0.5rem 0.85rem;
-  font-size: 0.85rem;
   cursor: pointer;
+  font-size: 0.85rem;
   white-space: nowrap;
 }
 .menu-item:hover { background: #f5f5f5; }
-.menu-item.danger { color: #e53935; }
-.menu-item.danger:hover { background: #ffebee; }
-.status-badge {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 10px;
-  font-size: 0.8rem;
-}
-.status-badge.idle { background: #e6f7ff; color: #1890ff; }
-.status-badge.in-progress { background: #fff3e0; color: #e65100; }
+.menu-item.danger { color: #c62828; }
 .empty {
   padding: 2rem 1rem;
   color: #999;
   font-style: italic;
   text-align: center;
 }
-.empty p { margin: 0.25rem 0; }
 </style>

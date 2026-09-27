@@ -1,10 +1,19 @@
 <script setup>
 import { ref, computed, onBeforeUnmount } from 'vue'
 
-// type: 'id' filters the device id field (always uses the backend's `in`
-// operator, so a single id or a comma-separated list both work).
-// type: 'name' filters the device's own name field with a plain
-// contains/equals text comparison (no type selector, unlike 'attribute').
+// type: 'id-list' filters an integer id column (always uses the backend's
+// `in` operator, so a single id or a comma-separated list both work).
+// type: 'text' filters a plain text column with a contains/equals
+// comparison (no type selector, unlike 'attribute'). Pass `operators` to
+// restrict which comparisons are offered (e.g. a 2-value enum column only
+// makes sense with "equals" - see chatbot's status/initiative columns);
+// defaults to offering both.
+// type: 'boolean' filters a plain boolean column with a single true/false
+// select (no type selector, unlike 'attribute').
+// type: 'date' filters a timestamp column with an on/before/after
+// comparison against a single datetime-local value, converted to RFC3339
+// for the backend's date-eq/date-lt/date-gt operators (no type selector,
+// unlike 'attribute').
 // type: 'attribute' filters a device attribute; `stats` (from
 // GET /device-store/v0/attributes/statistics) tells us which of the three
 // possible types (boolean/numeric/text) actually occur for this attribute,
@@ -12,6 +21,7 @@ import { ref, computed, onBeforeUnmount } from 'vue'
 const props = defineProps({
   type: { type: String, required: true },
   stats: { type: Object, default: null },
+  operators: { type: Array, default: null },
   active: { type: Boolean, default: false },
 })
 
@@ -31,11 +41,22 @@ const NUMERIC_OPERATORS = [
 ]
 
 // "contains" (case-insensitive substring) is the more useful default for
-// free-text attributes; exact match is still available.
-const TEXT_OPERATORS = [
+// free-text columns; exact match is still available. `operators` (a list of
+// op names) restricts this down, e.g. to just "equals" for an enum column.
+const ALL_TEXT_OPERATORS = [
   { op: 'text-contains', label: 'contains' },
   { op: 'text-eq', label: 'equals' },
 ]
+
+const DATE_OPERATORS = [
+  { op: 'date-eq', label: 'on' },
+  { op: 'date-lt', label: 'before' },
+  { op: 'date-gt', label: 'after' },
+]
+const TEXT_OPERATORS = computed(() => {
+  if (!props.operators) return ALL_TEXT_OPERATORS
+  return ALL_TEXT_OPERATORS.filter(o => props.operators.includes(o.op))
+})
 
 // Only types with at least one device set to them are selectable. If none
 // have any (e.g. a brand-new attribute), fall back to offering all three
@@ -58,19 +79,25 @@ const buttonRef = ref(null)
 const popoverRef = ref(null)
 const popoverStyle = ref({})
 
+function defaultTextOperator() {
+  return TEXT_OPERATORS.value[0]?.op || 'text-contains'
+}
+
 const idValue = ref('')
 const selectedType = ref('text')
 const userSelectedType = ref(false)
 const booleanValue = ref(true)
 const selectedOperator = ref('numeric-eq')
-const selectedTextOperator = ref('text-contains')
+const selectedTextOperator = ref(defaultTextOperator())
 const numericValue = ref('')
 const textValue = ref('')
+const selectedDateOperator = ref('date-eq')
+const dateValue = ref('')
 
 function onTypeChange() {
   userSelectedType.value = true
   selectedOperator.value = 'numeric-eq'
-  selectedTextOperator.value = 'text-contains'
+  selectedTextOperator.value = defaultTextOperator()
 }
 
 function positionPopover() {
@@ -120,15 +147,22 @@ function close() {
 onBeforeUnmount(close)
 
 function buildFilter() {
-  if (props.type === 'id') {
+  if (props.type === 'id-list') {
     const trimmed = idValue.value.trim()
     if (!trimmed) return null
     return { op: 'in', value: trimmed }
   }
-  if (props.type === 'name') {
+  if (props.type === 'text') {
     const trimmed = textValue.value.trim()
     if (!trimmed) return null
     return { op: selectedTextOperator.value, value: trimmed }
+  }
+  if (props.type === 'boolean') {
+    return { op: 'bool-eq', value: booleanValue.value ? 'true' : 'false' }
+  }
+  if (props.type === 'date') {
+    if (!dateValue.value) return null
+    return { op: selectedDateOperator.value, value: new Date(dateValue.value).toISOString() }
   }
   if (selectedType.value === 'boolean') {
     return { op: 'bool-eq', value: booleanValue.value ? 'true' : 'false' }
@@ -154,7 +188,9 @@ function clear() {
   numericValue.value = ''
   textValue.value = ''
   booleanValue.value = true
-  selectedTextOperator.value = 'text-contains'
+  selectedTextOperator.value = defaultTextOperator()
+  dateValue.value = ''
+  selectedDateOperator.value = 'date-eq'
   userSelectedType.value = false
   emit('clear')
   close()
@@ -177,17 +213,34 @@ function clear() {
     </button>
     <Teleport to="body">
       <div v-if="open" ref="popoverRef" class="filter-popover" :style="popoverStyle" @click.stop>
-        <template v-if="type === 'id'">
+        <template v-if="type === 'id-list'">
           <label class="field-label">ID (or comma-separated list)</label>
           <input v-model="idValue" type="text" placeholder="e.g. 3 or 3,4,5" class="filter-input" @keydown.enter="apply" />
         </template>
-        <template v-else-if="type === 'name'">
-          <label class="field-label">Comparison</label>
-          <select v-model="selectedTextOperator" class="filter-select">
-            <option v-for="o in TEXT_OPERATORS" :key="o.op" :value="o.op">{{ o.label }}</option>
-          </select>
+        <template v-else-if="type === 'text'">
+          <template v-if="TEXT_OPERATORS.length > 1">
+            <label class="field-label">Comparison</label>
+            <select v-model="selectedTextOperator" class="filter-select">
+              <option v-for="o in TEXT_OPERATORS" :key="o.op" :value="o.op">{{ o.label }}</option>
+            </select>
+          </template>
           <label class="field-label">Value</label>
           <input v-model="textValue" type="text" class="filter-input" @keydown.enter="apply" />
+        </template>
+        <template v-else-if="type === 'boolean'">
+          <label class="field-label">Value</label>
+          <select v-model="booleanValue" class="filter-select">
+            <option :value="true">true</option>
+            <option :value="false">false</option>
+          </select>
+        </template>
+        <template v-else-if="type === 'date'">
+          <label class="field-label">Comparison</label>
+          <select v-model="selectedDateOperator" class="filter-select">
+            <option v-for="o in DATE_OPERATORS" :key="o.op" :value="o.op">{{ o.label }}</option>
+          </select>
+          <label class="field-label">Value</label>
+          <input v-model="dateValue" type="datetime-local" class="filter-input" @keydown.enter="apply" />
         </template>
         <template v-else>
           <label class="field-label">Type</label>
