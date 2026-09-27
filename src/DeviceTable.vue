@@ -33,9 +33,9 @@ let resizeObserver = null
 let resizeDebounceTimer = null
 
 // Column filtering
-// columnFilters maps a device-store filter key ('id', 'name', or
+// columnFilters maps a device-store filter field ('id', 'name', or
 // 'attribute.<name>') to { op, value }, as understood by the device-store
-// `filters` query param.
+// `filters` query param (whose own wire format is {field, operator, value}).
 const columnFilters = ref({})
 // attributeStats maps attribute name -> { name, n-boolean, n-text, n-numeric }
 // from GET /device-store/v0/attributes/statistics, used to decide which
@@ -46,7 +46,7 @@ const attributeStats = ref({})
 function buildFiltersParam() {
   const entries = Object.entries(columnFilters.value)
   if (entries.length === 0) return undefined
-  return JSON.stringify(entries.map(([key, filter]) => ({ key, op: filter.op, value: filter.value })))
+  return JSON.stringify(entries.map(([field, filter]) => ({ field, operator: filter.op, value: filter.value })))
 }
 
 async function fetchAttributeStats() {
