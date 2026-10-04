@@ -6,13 +6,8 @@ import axios from 'axios'
 const router = useRouter()
 
 const loadingStatus = ref(true)
-const identityConfigured = ref(false)
 const apiKeyConfigured = ref(false)
 const statusError = ref(null)
-
-const identityName = ref('')
-const settingUpIdentity = ref(false)
-const identityError = ref(null)
 
 const apiKeyName = ref('')
 const apiKeyValue = ref('')
@@ -23,12 +18,11 @@ const query = ref('')
 const creating = ref(false)
 const createError = ref(null)
 
-const ready = () => identityConfigured.value && apiKeyConfigured.value
+const ready = () => apiKeyConfigured.value
 
 async function fetchStatus() {
   try {
     const response = await axios.get('/chatbot-service/v0/status')
-    identityConfigured.value = response.data.identity
     apiKeyConfigured.value = response.data['api-key']
     statusError.value = null
   } catch (err) {
@@ -40,19 +34,6 @@ onMounted(async () => {
   await fetchStatus()
   loadingStatus.value = false
 })
-
-async function setupIdentity() {
-  identityError.value = null
-  settingUpIdentity.value = true
-  try {
-    await axios.post('/chatbot-service/v0/identities/setup', { name: identityName.value })
-    await fetchStatus()
-  } catch (err) {
-    identityError.value = err
-  } finally {
-    settingUpIdentity.value = false
-  }
-}
 
 async function setupApiKey() {
   apiKeyError.value = null
@@ -98,7 +79,7 @@ async function startConversation() {
 
     <div v-else class="setup-card">
       <div v-if="!ready()" class="onboarding">
-        <p class="onboarding-intro">Before you can start a conversation, the chatbot needs:</p>
+        <p class="onboarding-intro">Before you can start a conversation, the chatbot needs an Anthropic API key:</p>
 
         <div class="step" :class="{ done: apiKeyConfigured }">
           <div class="step-header">
@@ -117,23 +98,6 @@ async function startConversation() {
             <div v-if="apiKeyError" class="error-msg">{{ apiKeyError.response?.data?.detail || apiKeyError.message }}</div>
             <button type="submit" class="submit-btn" :disabled="settingUpApiKey">
               {{ settingUpApiKey ? 'Saving…' : 'Save API key' }}
-            </button>
-          </form>
-        </div>
-
-        <div class="step" :class="{ done: identityConfigured }">
-          <div class="step-header">
-            <span class="step-icon">{{ identityConfigured ? '✓' : '2' }}</span>
-            <span class="step-title">Its own identity</span>
-          </div>
-          <form v-if="!identityConfigured" @submit.prevent="setupIdentity" class="step-form">
-            <div class="form-group">
-              <label for="identity-name">Display name</label>
-              <input id="identity-name" v-model="identityName" type="text" required :disabled="settingUpIdentity" />
-            </div>
-            <div v-if="identityError" class="error-msg">{{ identityError.response?.data?.detail || identityError.message }}</div>
-            <button type="submit" class="submit-btn" :disabled="settingUpIdentity">
-              {{ settingUpIdentity ? 'Setting up…' : 'Set up identity' }}
             </button>
           </form>
         </div>
