@@ -414,8 +414,10 @@ function computeMinWidth() {
   // right now.
   const labelWidth = labelRef.value?.scrollWidth || 0
   // .header-actions never shrinks (flex-shrink: 0), so its own offsetWidth
-  // is always its true natural size - already correctly net of things like
-  // the resize handle's negative margin clawing back the cell's padding.
+  // is always its true natural size. The resize handle itself isn't
+  // included here any more - it's now an absolutely-positioned strip
+  // straddling the cell's right border rather than a flex child, so it
+  // takes no layout space of its own to budget for.
   const actionsWidth = actionsRef.value?.offsetWidth || 0
   let paddingLeft = 8
   let paddingRight = 8
@@ -481,13 +483,13 @@ function startResize(event) {
       <span v-if="col.sortable" class="sort-indicator">{{ sortBadge }}</span>
       <span v-if="hasFilter && filterValue" class="filter-dot" title="Filter applied" />
       <span v-if="clickable" class="config-icon" title="Filtering/ordering options" aria-hidden="true">☰</span>
-      <span
-        class="resize-handle"
-        title="Drag to resize column"
-        @pointerdown.stop="startResize"
-        @click.stop
-      >⋮</span>
     </span>
+    <span
+      class="resize-handle"
+      title="Drag to resize column"
+      @pointerdown.stop="startResize"
+      @click.stop
+    ><span class="resize-grip">⋮</span></span>
     <Teleport to="body">
       <div v-if="open" ref="popoverRef" class="header-popover" :style="popoverStyle" @click.stop>
         <template v-if="col.sortable">
@@ -659,6 +661,7 @@ function startResize(event) {
 
 <style scoped>
 .header-cell {
+  position: relative;
   display: flex;
   align-items: center;
   /* Kept tight on purpose: this directly feeds the computed minimum width
@@ -727,24 +730,43 @@ function startResize(event) {
 .header-cell.clickable:hover .config-icon {
   opacity: 0.85;
 }
+/* Sits directly on top of the cell's right border (the column divider)
+   rather than taking up flex space next to the other header icons - a
+   strip straddling the shared edge between this column and the next, the
+   way most spreadsheet/table UIs place their resize grips. The handle
+   itself (.resize-handle) is the full-height invisible drag hit area;
+   .resize-grip inside it is the small visible pill the "⋮" glyph sits
+   centered in - a slightly greyed box at rest, so it's apparent at a
+   glance that the divider is draggable, turning solid blue on hover. */
 .resize-handle {
-  flex-shrink: 0;
-  min-width: 13px;
-  align-self: stretch;
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translateX(50%);
+  width: 13px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+.resize-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 11px;
+  height: 18px;
+  border-radius: 3px;
   font-size: 0.75rem;
   line-height: 1;
   color: #999;
-  opacity: 0.5;
-  cursor: col-resize;
-  touch-action: none;
+  background: rgba(0, 0, 0, 0.06);
 }
-.resize-handle:hover {
-  opacity: 1;
-  color: #1890ff;
-  background: rgba(0, 0, 0, 0.05);
+.resize-handle:hover .resize-grip {
+  color: #fff;
+  background: #1890ff;
 }
 
 .header-popover {

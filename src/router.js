@@ -73,10 +73,16 @@ const routes = [
     children: [{ path: ':id', name: 'UserDetail', component: UserDetail }]
   },
   { path: '/cloud-link/callback', name: 'CloudLinkCallback', component: CloudLinkCallback },
-  { path: '/ai-control', name: 'AIControl', component: AIControlTable },
-  { path: '/ai-control/new', name: 'AIControlNew', component: AIControlNewChat },
+  {
+    path: '/ai-control',
+    name: 'AIControl',
+    component: AIControlTable,
+    children: [
+      { path: 'new', name: 'AIControlNew', component: AIControlNewChat },
+      { path: ':id', name: 'AIControlChat', component: AIControlChat },
+    ]
+  },
   { path: '/ai-control/settings', name: 'AIControlSettings', component: AIControlSettings },
-  { path: '/ai-control/:id', name: 'AIControlChat', component: AIControlChat },
   { path: '/cloud-connect', name: 'CloudConnectSetup', component: CloudConnectSetup },
   { path: '/cloud-connect/callback', name: 'CloudConnectCallback', component: CloudConnectCallback },
   {

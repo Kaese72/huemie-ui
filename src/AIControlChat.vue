@@ -118,12 +118,12 @@ async function forgetConversation() {
   }
 }
 
+// Generic tool calls (list_devices/list_groups) are rendered specially
+// below instead of through this label - their response is a raw blob that
+// can be arbitrarily long, so it's hidden behind an expand/collapse toggle
+// rather than printed inline. See expandedGenericToolResults.
 function toolLabel(entry) {
   switch (entry.type) {
-    case 'AGENT_GENERIC_TOOL_CALL':
-      return `🔧 Called ${entry['generic-tool-call']['tool-name']}`
-    case 'AGENT_GENERIC_TOOL_RESPONSE':
-      return `↳ ${entry['generic-tool-response']['is-error'] ? 'Failed' : 'Result'}: ${entry['generic-tool-response'].output}`
     case 'AGENT_DEVICE_CAPABILITY_TRIGGER_CALL': {
       const c = entry['device-capability-trigger-call']
       return `🔧 Triggered "${c.capability}" on device ${c['device-id']}`
@@ -145,7 +145,34 @@ function toolLabel(entry) {
   }
 }
 
-const isToolEntry = (type) => type.startsWith('AGENT_GENERIC_TOOL') || type.includes('CAPABILITY_TRIGGER')
+const isToolEntry = (type) => type.includes('CAPABILITY_TRIGGER')
+
+// Tracks which generic tool calls' responses are currently expanded, keyed
+// by tool-use-id (shared between the *_CALL and *_RESPONSE entry of a pair).
+// Collapsed (the default - nothing in this Set) renders no box at all, so it
+// takes up no space; expanding one inserts the box in its natural place in
+// the message flow, pushing later entries down rather than overlaying them.
+const expandedGenericToolResults = ref(new Set())
+
+function toggleGenericToolResult(toolUseId) {
+  if (expandedGenericToolResults.value.has(toolUseId)) {
+    expandedGenericToolResults.value.delete(toolUseId)
+  } else {
+    expandedGenericToolResults.value.add(toolUseId)
+  }
+}
+
+// list_devices/list_groups' output is device-store's raw JSON response as an
+// unparsed string (restmodels.GenericToolResponsePayload.Output) - pretty
+// print it for readability when it parses as JSON, otherwise fall back to
+// the raw string as-is (e.g. a plain-text error message isn't JSON at all).
+function formatToolOutput(output) {
+  try {
+    return JSON.stringify(JSON.parse(output), null, 2)
+  } catch {
+    return output
+  }
+}
 </script>
 
 <template>
@@ -168,6 +195,25 @@ const isToolEntry = (type) => type.startsWith('AGENT_GENERIC_TOOL') || type.incl
           <div v-else-if="entry.type === 'AGENT_MESSAGE'" class="bubble agent">{{ entry['agent-message'].text }}</div>
           <div v-else-if="entry.type === 'AGENT_ERROR'" class="bubble agent-error">⚠ {{ entry['agent-error'].message }}</div>
           <div v-else-if="entry.type === 'USER_STOP'" class="system-note">Conversation stopped.</div>
+          <div v-else-if="entry.type === 'AGENT_GENERIC_TOOL_CALL'" class="tool-note tool-call-row">
+            <button
+              class="expand-toggle"
+              @click="toggleGenericToolResult(entry['generic-tool-call']['tool-use-id'])"
+            >
+              🔧 Called {{ entry['generic-tool-call']['tool-name'] }}
+              <span
+                class="expand-arrow"
+                :class="{ open: expandedGenericToolResults.has(entry['generic-tool-call']['tool-use-id']) }"
+              >▾</span>
+            </button>
+          </div>
+          <div
+            v-else-if="entry.type === 'AGENT_GENERIC_TOOL_RESPONSE' && expandedGenericToolResults.has(entry['generic-tool-response']['tool-use-id'])"
+            class="tool-result-box"
+            :class="{ error: entry['generic-tool-response']['is-error'] }"
+          >
+            <pre>{{ formatToolOutput(entry['generic-tool-response'].output) }}</pre>
+          </div>
           <div v-else-if="isToolEntry(entry.type)" class="tool-note">{{ toolLabel(entry) }}</div>
         </template>
         <div v-if="inProgress" class="bubble agent thinking">Thinking…</div>
@@ -269,6 +315,54 @@ const isToolEntry = (type) => type.startsWith('AGENT_GENERIC_TOOL') || type.incl
   font-style: italic;
 }
 .tool-note { align-self: flex-start; margin-left: 0.5rem; }
+.tool-call-row { padding: 0; }
+.expand-toggle {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-style: italic;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.expand-toggle:hover { color: #42b983; }
+.expand-arrow {
+  display: inline-block;
+  font-style: normal;
+  font-size: 1.1rem;
+  font-weight: bold;
+  line-height: 1;
+  color: #666;
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.expand-toggle:hover .expand-arrow { color: #42b983; }
+.expand-arrow.open { transform: rotate(0deg); }
+.tool-result-box {
+  align-self: flex-start;
+  margin-left: 0.5rem;
+  max-width: 90%;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+.tool-result-box.error {
+  background: #fdecea;
+  border-color: #f5c6cb;
+}
+.tool-result-box pre {
+  margin: 0;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #444;
+}
+.tool-result-box.error pre { color: #721c24; }
 
 .composer {
   flex-shrink: 0;

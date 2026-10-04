@@ -1,11 +1,13 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import TableShell from './components/TableShell.vue'
+import DetailOverlay from './components/DetailOverlay.vue'
 import { useTableList } from './composables/useTableList.js'
 
 const router = useRouter()
+const route = useRoute()
 const openMenuId = ref(null)
 
 const columns = [
@@ -71,8 +73,26 @@ onBeforeUnmount(() => {
 })
 
 function onRowClick(conversation) {
-  router.push({ name: 'AIControlChat', params: { id: conversation.id } })
+  // selectedId.value is a string while conversation.id is a number, thus we
+  // can not do a ===
+  if (selectedId.value == conversation.id) {
+    // If already selected, close detail view
+    router.push({ name: 'AIControl' })
+  } else {
+    router.push({ name: 'AIControlChat', params: { id: conversation.id } })
+  }
 }
+
+// Only AIControlChat has a real row to highlight - the "new chat" detail
+// pane (AIControlNew) has no row of its own, but TableShell still needs a
+// non-null selectedId to reserve trailing scroll space for the open overlay,
+// hence the sentinel (it will never match a real conversation id).
+const selectedId = computed(() => {
+  if (route.name === 'AIControlChat') return route.params.id
+  if (route.name === 'AIControlNew') return '__new__'
+  return null
+})
+const showDetail = computed(() => selectedId.value != null)
 
 function toggleMenu(conversationId, event) {
   event.stopPropagation()
@@ -96,44 +116,49 @@ async function forgetConversation(conversation, event) {
   <div class="ai-control-table">
     <h1>AI Control</h1>
     <div v-if="error">Error: {{ error.message }}</div>
-    <TableShell
-      :columns="columns"
-      :rows="conversations"
-      :selected-id="null"
-      :column-filters="columnFilters"
-      :sort="sort"
-      :loading="loading"
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      :page-window="pageWindow"
-      :show-first="showFirst"
-      :show-last="showLast"
-      @row-click="onRowClick"
-      @go-to-page="goToPage"
-      @filter-apply="onColumnFilterApply"
-      @filter-clear="onColumnFilterClear"
-      @sort-change="onSortChange"
-      @resize="onResize"
-    >
-      <template #cell-status="{ row }">
-        <span class="status-badge" :class="row.status === 'AGENT_IN_PROGRESS' ? 'in-progress' : 'idle'">
-          {{ row.status === 'AGENT_IN_PROGRESS' ? 'Thinking…' : 'Waiting for you' }}
-        </span>
-      </template>
-      <template #cell-initiative="{ row }">{{ row.initiative === 'AGENT' ? 'Agent' : 'User' }}</template>
-      <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
-      <template #cell-actions="{ row }">
-        <button class="menu-btn" @click="toggleMenu(row.id, $event)">⋮</button>
-        <div v-if="openMenuId === row.id" class="menu" @click.stop>
-          <button class="menu-item danger" @click="forgetConversation(row, $event)">Forget conversation</button>
-        </div>
-      </template>
-      <template #empty>
-        <div v-if="ready" class="empty">
-          <p>No conversations match the current filters.</p>
-        </div>
-      </template>
-    </TableShell>
+    <div class="split-content">
+      <TableShell
+        :columns="columns"
+        :rows="conversations"
+        :selected-id="selectedId"
+        :column-filters="columnFilters"
+        :sort="sort"
+        :loading="loading"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :page-window="pageWindow"
+        :show-first="showFirst"
+        :show-last="showLast"
+        @row-click="onRowClick"
+        @go-to-page="goToPage"
+        @filter-apply="onColumnFilterApply"
+        @filter-clear="onColumnFilterClear"
+        @sort-change="onSortChange"
+        @resize="onResize"
+      >
+        <template #cell-status="{ row }">
+          <span class="status-badge" :class="row.status === 'AGENT_IN_PROGRESS' ? 'in-progress' : 'idle'">
+            {{ row.status === 'AGENT_IN_PROGRESS' ? 'Thinking…' : 'Waiting for you' }}
+          </span>
+        </template>
+        <template #cell-initiative="{ row }">{{ row.initiative === 'AGENT' ? 'Agent' : 'User' }}</template>
+        <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
+        <template #cell-actions="{ row }">
+          <button class="menu-btn" @click="toggleMenu(row.id, $event)">⋮</button>
+          <div v-if="openMenuId === row.id" class="menu" @click.stop>
+            <button class="menu-item danger" @click="forgetConversation(row, $event)">Forget conversation</button>
+          </div>
+        </template>
+        <template #empty>
+          <div v-if="ready" class="empty">
+            <p>No conversations match the current filters.</p>
+          </div>
+        </template>
+      </TableShell>
+      <DetailOverlay v-if="showDetail">
+        <router-view />
+      </DetailOverlay>
+    </div>
   </div>
 </template>
 
@@ -142,13 +167,20 @@ async function forgetConversation(conversation, event) {
   width: 100%;
   height: 100%;
   min-height: 0;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 .ai-control-table h1 {
   flex-shrink: 0;
   margin-bottom: 0.5rem;
+}
+.split-content {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 .status-badge {
   padding: 0.15rem 0.5rem;
