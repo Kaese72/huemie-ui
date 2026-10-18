@@ -86,48 +86,43 @@ function triggerCapability(argumentValues) {
 </script>
 
 <template>
-	<div v-if="error">Error: {{ error.message }}</div>
+	<div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
 	<div v-else-if="group">
-		<h2>Group Details: {{ group.id }}</h2>
-		<div class="group-meta">
-			<strong>Name:</strong> {{ group.name }}<br>
-			<strong>Bridge identifier:</strong> {{ group['bridge-identifier'] }}<br>
-			<strong>Last updated:</strong> {{ group.updated || 'Unknown' }}
+		<div class="detail-head">
+			<h2 class="detail-title">{{ group.name }}</h2>
+		</div>
+		<div class="detail-meta">
+			<span><strong>ID</strong> <span class="mono">{{ group.id }}</span></span>
+			<span><strong>Bridge identifier</strong> <span class="mono">{{ group['bridge-identifier'] }}</span></span>
+			<span><strong>Last updated</strong> {{ group.updated || 'Unknown' }}</span>
 		</div>
 
 		<div class="tabs">
 			<button class="tab" :class="{ active: activeTab === 'state' }" @click="selectTab('state')">State</button>
-			<button class="tab" :class="{ active: activeTab === 'history' }" @click="selectTab('history')">Trigger History</button>
+			<button class="tab" :class="{ active: activeTab === 'history' }" @click="selectTab('history')">Trigger history</button>
 		</div>
 
 		<div v-if="activeTab === 'state'">
 			<div v-if="group.capabilities && group.capabilities.length">
-				<h3>Capabilities</h3>
-				<table class="data-table">
-					<thead>
-						<tr>
-							<th>Name</th>
-							<th>Updated</th>
-							<th>Action</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="cap in group.capabilities" :key="cap.name">
-							<td>{{ cap.name }}</td>
-							<td>{{ cap.updated || 'Unknown' }}</td>
-							<td>
-								<button class="trigger-button" @click="openCapabilityDialog(cap)">
-									Trigger {{ cap.name }}
-								</button>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+				<h3 class="section-title">Capabilities</h3>
+				<div class="capabilities">
+					<button
+						v-for="cap in group.capabilities"
+						:key="cap.name"
+						class="btn btn-ghost btn-sm capability"
+						:title="`Updated ${cap.updated || 'Unknown'}`"
+						@click="openCapabilityDialog(cap)"
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+						{{ cap.name }}
+					</button>
+				</div>
 			</div>
+			<p v-else class="empty">No capabilities.</p>
 		</div>
 
 		<div v-if="activeTab === 'history'">
-			<div v-if="!triggerAudits.length" class="empty-state">No capability triggers recorded yet.</div>
+			<p v-if="!triggerAudits.length" class="empty">No capability triggers recorded yet.</p>
 			<table v-else class="data-table">
 				<thead>
 					<tr>
@@ -141,19 +136,19 @@ function triggerCapability(argumentValues) {
 				<tbody>
 					<tr v-for="audit in triggerAudits" :key="audit.id">
 						<td>{{ audit.name }}</td>
-						<td>{{ audit.timestamp }}</td>
-						<td :class="audit.success ? 'audit-success' : 'audit-failure'">
+						<td class="muted">{{ audit.timestamp }}</td>
+						<td :class="audit.success ? 'text-ok' : 'text-fail'">
 							{{ audit.success ? 'Success' : 'Failed' }}
 						</td>
 						<td><code>{{ audit.arguments }}</code></td>
-						<td>{{ audit['error-message'] || '' }}</td>
+						<td class="error-text">{{ audit['error-message'] || '' }}</td>
 					</tr>
 				</tbody>
 			</table>
 		</div>
 
-		<div class="forget-section">
-			<button class="forget-button" @click="forgetGroup">Forget group</button>
+		<div class="detail-footer">
+			<button class="btn btn-danger btn-sm" @click="forgetGroup">Forget group</button>
 		</div>
 
 		<CapabilityDialog
@@ -164,85 +159,14 @@ function triggerCapability(argumentValues) {
 			@trigger="triggerCapability"
 		/>
 	</div>
-	<div v-else>Loading...</div>
+	<p v-else class="empty">Loading…</p>
 </template>
 
 <style scoped>
-.group-meta {
-	margin-bottom: 1rem;
+.muted {
+	color: var(--muted);
 }
-.tabs {
-	display: flex;
-	gap: 0.25rem;
-	margin-bottom: 1rem;
-	border-bottom: 2px solid #ddd;
-}
-.tab {
-	padding: 0.5rem 1rem;
-	border: none;
-	background: none;
-	cursor: pointer;
-	font-size: 1rem;
-	border-bottom: 2px solid transparent;
-	margin-bottom: -2px;
-}
-.tab.active {
-	border-bottom-color: #42b983;
-	color: #42b983;
-	font-weight: bold;
-}
-.data-table {
-	width: 100%;
-	border-collapse: collapse;
-	margin-bottom: 1rem;
-}
-.data-table th,
-.data-table td {
-	border: 1px solid #ddd;
-	padding: 0.5rem;
-	text-align: left;
-}
-.data-table th {
-	background: #f5f5f5;
-}
-.trigger-button {
-	padding: 0.5rem 1rem;
-	background: #42b983;
-	color: #fff;
-	border: none;
-	border-radius: 4px;
-	cursor: pointer;
-	transition: background 0.2s;
-}
-.trigger-button:hover {
-	background: #369870;
-}
-.forget-section {
-	margin-top: 1rem;
-}
-.forget-button {
-	padding: 0.5rem 1rem;
-	background: #42b983;
-	color: #fff;
-	border: none;
-	border-radius: 4px;
-	cursor: pointer;
-	transition: background 0.2s;
-}
-.forget-button:hover {
-	background: #369870;
-}
-.audit-success {
-	color: #2a9d5c;
-	font-weight: bold;
-}
-.audit-failure {
-	color: #c0392b;
-	font-weight: bold;
-}
-.empty-state {
-	color: #888;
-	font-style: italic;
-	margin-bottom: 1rem;
+.error-text {
+	color: var(--danger-ink);
 }
 </style>

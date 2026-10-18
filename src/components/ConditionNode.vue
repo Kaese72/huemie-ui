@@ -348,10 +348,13 @@ function removeOr()   { update({ or:  null }) }
 </template>
 
 <style scoped>
+/* DESIGN.md (this repo), section 6 "Rules". AND/OR are logic, not meaning,
+   so they stay neutral. Green marks the drag/drop interaction. Nothing here
+   is dashed - dashed means Cloud. */
 .condition-node {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 /* ── Drag state ───────────────────────────────────────────── */
@@ -360,8 +363,8 @@ function removeOr()   { update({ or:  null }) }
 }
 
 .node--source > .condition-row-wrap > .condition-row {
-  border-color: #42b983;
-  box-shadow: 0 0 0 2px #42b98340;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent);
 }
 
 .node--greyed > .condition-row-wrap > .condition-row {
@@ -377,122 +380,116 @@ function removeOr()   { update({ or:  null }) }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.82);
-  border-radius: 5px;
-  border: 2px dashed #90caf9;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-radius: 12px;
+  border: 2px solid color-mix(in srgb, var(--ink) 14%, transparent);
   z-index: 20;
   padding: 0 8px;
 }
 
 .dz-btn {
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: 999px;
+  font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid;
-  transition: background 0.1s, color 0.1s;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--text);
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
   white-space: nowrap;
 }
 .dz-btn:disabled {
   opacity: 0.25;
   cursor: not-allowed;
 }
-.dz-swap { background: #e8f5e9; color: #2e7d32; border-color: #2e7d32; }
-.dz-swap:not(:disabled):hover { background: #2e7d32; color: #fff; }
-.dz-and  { background: #e3f2fd; color: #1565c0; border-color: #1565c0; }
-.dz-and:not(:disabled):hover  { background: #1565c0; color: #fff; }
-.dz-or   { background: #f3e5f5; color: #6a1b9a; border-color: #6a1b9a; }
-.dz-or:not(:disabled):hover   { background: #6a1b9a; color: #fff; }
+.dz-btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--green) 16%, transparent);
+  border-color: var(--green);
+  color: var(--green-ink);
+}
 
 /* Drag handle */
 .drag-handle {
   cursor: grab;
-  color: #bbb;
+  color: var(--faint);
   font-size: 1rem;
   padding: 0 2px;
   user-select: none;
   flex-shrink: 0;
   line-height: 1;
 }
-.drag-handle:hover { color: #888; }
+.drag-handle:hover { color: var(--text); }
 
 /* ── Row layout ───────────────────────────────────────────── */
 .condition-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: 12px;
+  padding: 7px 10px;
   flex-wrap: wrap;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* All the small inline controls share one look (a compact .input). */
+.type-select,
+.time-input,
+.id-input,
+.attr-input,
+.bool-select,
+.num-input,
+.text-value-input,
+.cooldown-input,
+.tz-select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--text);
+  outline: none;
+  color-scheme: var(--scheme);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.type-select:focus,
+.time-input:focus,
+.id-input:focus,
+.attr-input:focus,
+.bool-select:focus,
+.num-input:focus,
+.text-value-input:focus,
+.cooldown-input:focus,
+.tz-select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent);
+}
+.type-select option,
+.type-select optgroup,
+.bool-select option,
+.tz-select option {
+  background: var(--surface);
+  color: var(--text);
 }
 .type-select {
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
   min-width: 130px;
+  font-weight: 600;
 }
-.time-input {
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-  width: 110px;
-}
-.id-input {
-  width: 64px;
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-}
-.attr-input {
-  width: 100px;
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-}
-.bool-select {
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-}
-.num-input {
-  width: 80px;
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-}
-.text-value-input {
-  width: 140px;
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-}
-.cooldown-input {
-  width: 60px;
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-}
-.tz-select {
-  font-size: 0.85rem;
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid #ccc;
-  max-width: 180px;
-}
+.time-input { width: 110px; }
+.id-input { width: 64px; }
+.attr-input { width: 100px; }
+.num-input { width: 80px; }
+.text-value-input { width: 140px; }
+.cooldown-input { width: 60px; }
+.tz-select { max-width: 180px; }
+
 .field-label {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--muted);
 }
 .node-buttons {
   margin-left: auto;
@@ -500,58 +497,75 @@ function removeOr()   { update({ or:  null }) }
   gap: 4px;
 }
 .btn-rel {
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border: 1px solid #aaa;
-  border-radius: 3px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+  border-radius: 999px;
   cursor: pointer;
-  background: #fff;
-  color: #333;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--muted);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .btn-rel:hover:not(:disabled) {
-  background: #e8f5e9;
-  border-color: #42b983;
-  color: #42b983;
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 35%, transparent);
+  color: var(--text);
 }
 .btn-rel:disabled {
   opacity: 0.35;
   cursor: default;
 }
 .btn-remove {
-  font-size: 0.75rem;
-  padding: 2px 7px;
-  border: 1px solid #e57373;
-  border-radius: 3px;
+  font: inherit;
+  font-size: 0.72rem;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
   cursor: pointer;
-  background: #fff;
-  color: #e57373;
+  background: none;
+  color: var(--muted);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .btn-remove:hover {
-  background: #ffebee;
+  color: var(--danger-ink);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 /* ── AND / OR blocks ──────────────────────────────────────── */
+/* AND: the next condition hangs off a solid neutral line with an AND chip. */
 .and-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-left: 24px;
-  border-left: 2px solid #90caf9;
-  margin-left: 8px;
+  gap: 6px;
+  padding-left: 22px;
+  border-left: 2px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  margin-left: 10px;
+}
+.and-badge,
+.or-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 .and-badge {
-  font-size: 0.7rem;
-  font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: #e3f2fd;
-  color: #1565c0;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--muted);
   align-self: flex-start;
 }
+/* OR: a full-width divider with an outlined OR chip in the middle. */
 .or-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .or-divider {
   display: flex;
@@ -564,45 +578,41 @@ function removeOr()   { update({ or:  null }) }
   content: '';
   flex: 1;
   height: 1px;
-  background: #ce93d8;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
 }
 .or-badge {
-  font-size: 0.7rem;
-  font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: #f3e5f5;
-  color: #6a1b9a;
-  white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+  color: var(--muted);
 }
 .days-picker {
   display: flex;
-  gap: 2px;
+  gap: 3px;
 }
 .day-btn {
-  width: 20px;
-  height: 20px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  border-radius: 3px;
-  border: 1px solid #ccc;
+  width: 22px;
+  height: 22px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
   cursor: pointer;
-  background: #f0f0f0;
-  color: #aaa;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--faint);
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .day-btn--active {
-  background: #42b983;
-  border-color: #2d8f5e;
-  color: #fff;
+  background: color-mix(in srgb, var(--green) 18%, transparent);
+  border-color: var(--green);
+  color: var(--green-ink);
 }
 .day-btn:hover:not(.day-btn--active) {
-  background: #e8f5e9;
-  border-color: #42b983;
-  color: #42b983;
+  border-color: color-mix(in srgb, var(--green) 60%, transparent);
+  color: var(--text);
 }
 </style>

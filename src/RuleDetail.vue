@@ -307,33 +307,37 @@ async function deleteAction(action) {
 </script>
 
 <template>
-  <div v-if="error" class="error">Error: {{ error.message }}</div>
-  <div v-else-if="!rule" class="loading">Loading…</div>
+  <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
+  <p v-else-if="!rule" class="empty">Loading…</p>
   <div v-else class="rule-detail">
 
-    <div class="detail-header">
-      <h2>Rule #{{ rule.id }}</h2>
-      <button class="btn-danger" @click="deleteRule">Delete rule</button>
+    <div class="detail-head">
+      <h2 class="detail-title">{{ rule.name }}</h2>
+      <button class="btn btn-danger btn-sm" @click="deleteRule">Delete rule</button>
+    </div>
+    <div class="detail-meta">
+      <span><strong>ID</strong> <span class="mono">{{ rule.id }}</span></span>
     </div>
 
     <!-- ── Basic fields ── -->
     <section class="section">
       <div class="field-row">
-        <label class="field-label">Name</label>
-        <input v-model="editName" type="text" class="name-input" />
+        <label class="field-label" for="rule-name">Name</label>
+        <input id="rule-name" v-model="editName" type="text" class="input input-sm name-input" />
       </div>
       <div class="field-row">
-        <label class="field-label">Enabled</label>
-        <input v-model="editEnabled" type="checkbox" class="enabled-check" />
+        <label class="field-label" for="rule-enabled">Enabled</label>
+        <input id="rule-enabled" v-model="editEnabled" type="checkbox" class="enabled-check" />
       </div>
       <div class="field-row">
-        <label class="field-label">Next occurrence</label>
+        <span class="field-label">Next occurrence</span>
         <span class="field-value">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</span>
       </div>
       <div v-if="rule['cooldown-until']" class="field-row">
-        <label class="field-label">Cooldown until</label>
-        <span class="field-value" :class="{ 'cooldown-active': new Date(rule['cooldown-until']) > new Date() }">
+        <span class="field-label">Cooldown until</span>
+        <span class="field-value">
           {{ new Date(rule['cooldown-until']).toLocaleString(undefined, { timeZoneName: 'short' }) }}
+          <span v-if="new Date(rule['cooldown-until']) > new Date()" class="badge badge-neutral">Cooling down</span>
         </span>
       </div>
     </section>
@@ -341,11 +345,11 @@ async function deleteAction(action) {
     <!-- ── Condition tree ── -->
     <section class="section">
       <div class="section-header">
-        <h3>Condition tree</h3>
-        <button v-if="!editConditionTree" class="btn-secondary" @click="addRootCondition">
-          + Add condition
+        <h3 class="section-title"><span class="when">When</span> Conditions</h3>
+        <button v-if="!editConditionTree" class="btn btn-ghost btn-sm" @click="addRootCondition">
+          Add condition
         </button>
-        <button v-else class="btn-danger-sm" @click="removeRootCondition">
+        <button v-else class="btn btn-danger btn-sm" @click="removeRootCondition">
           Clear all
         </button>
       </div>
@@ -357,40 +361,43 @@ async function deleteAction(action) {
           @update="editConditionTree = $event"
         />
       </div>
-      <div v-else class="empty-hint">No conditions — rule will never trigger.</div>
+      <p v-else class="hint">No conditions — the rule will never trigger.</p>
     </section>
 
     <!-- ── Save / Test row ── -->
     <div class="save-row">
-      <button class="btn-primary" @click="saveRule" :disabled="saving">
+      <button class="btn btn-primary" @click="saveRule" :disabled="saving">
         {{ saving ? 'Saving…' : 'Save rule' }}
       </button>
-      <button class="btn-secondary" @click="evaluateRule" :disabled="evaluating">
+      <button class="btn btn-ghost" @click="evaluateRule" :disabled="evaluating">
         {{ evaluating ? 'Testing…' : 'Test now' }}
       </button>
-      <span v-if="evalResult !== null" class="eval-result" :class="evalResult.result ? 'eval-true' : 'eval-false'">
-        {{ evalResult.result ? '✓ true' : '✗ false' }}
-        <span v-if="!evalResult.result && evalResult.reason" class="eval-reason">— {{ evalResult.reason }}</span>
-        <span v-if="evalResult['next-occurrence']" class="eval-next">· next: {{ new Date(evalResult['next-occurrence']).toLocaleString(undefined, { timeZoneName: 'short' }) }}</span>
+      <span v-if="evalResult !== null" class="eval-result">
+        <span class="badge" :class="evalResult.result ? 'badge-green' : 'badge-danger'">
+          {{ evalResult.result ? 'Matches' : 'No match' }}
+        </span>
+        <span v-if="!evalResult.result && evalResult.reason" class="eval-reason">{{ evalResult.reason }}</span>
+        <span v-if="evalResult['next-occurrence']" class="eval-next">Next: {{ new Date(evalResult['next-occurrence']).toLocaleString(undefined, { timeZoneName: 'short' }) }}</span>
       </span>
     </div>
 
     <!-- ── Actions ── -->
     <section class="section">
       <div class="section-header">
-        <h3>Actions</h3>
-        <button v-if="!showActionForm" class="btn-secondary" @click="openNewActionForm">
-          + Add action
+        <h3 class="section-title"><span class="then">Do</span> Actions</h3>
+        <button v-if="!showActionForm" class="btn btn-ghost btn-sm" @click="openNewActionForm">
+          Add action
         </button>
       </div>
 
-      <div v-if="actions.length === 0 && !showActionForm" class="empty-hint">
+      <p v-if="actions.length === 0 && !showActionForm" class="hint">
         No actions configured.
-      </div>
+      </p>
 
-      <table v-if="actions.length > 0" class="actions-table">
+      <table v-if="actions.length > 0" class="data-table actions-table">
         <thead>
           <tr>
+            <th></th>
             <th>Type</th>
             <th>Target ID</th>
             <th>Capability</th>
@@ -399,12 +406,15 @@ async function deleteAction(action) {
         </thead>
         <tbody>
           <tr v-for="action in actions" :key="action['action-id']">
+            <td class="out-cell">
+              <svg class="out-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </td>
             <td>{{ action.type }}</td>
-            <td>{{ action.id }}</td>
+            <td class="mono">{{ action.id }}</td>
             <td>{{ action.capability }}</td>
-            <td class="action-btns">
-              <button class="btn-sm" @click="openEditActionForm(action)">Edit</button>
-              <button class="btn-sm btn-sm-danger" @click="deleteAction(action)">Delete</button>
+            <td class="actions">
+              <button class="btn btn-ghost btn-sm" @click="openEditActionForm(action)">Edit</button>
+              <button class="btn btn-danger btn-sm" @click="deleteAction(action)">Delete</button>
             </td>
           </tr>
         </tbody>
@@ -412,26 +422,26 @@ async function deleteAction(action) {
 
       <!-- Inline action form -->
       <div v-if="showActionForm && editingAction" class="action-form">
-        <h4>{{ editingAction.actionId ? 'Edit action' : 'New action' }}</h4>
+        <h4 class="action-form-title">{{ editingAction.actionId ? 'Edit action' : 'New action' }}</h4>
         <div class="form-grid">
-          <label>Type</label>
-          <select v-model="editingAction.type">
+          <label for="action-type">Type</label>
+          <select id="action-type" v-model="editingAction.type" class="input input-sm">
             <option value="device-capability">device-capability</option>
             <option value="group-capability">group-capability</option>
           </select>
 
-          <label>Target ID</label>
-          <input type="number" v-model.number="editingAction.id" min="1" />
+          <label for="action-target">Target ID</label>
+          <input id="action-target" type="number" v-model.number="editingAction.id" min="1" class="input input-sm" />
 
-          <label>Capability</label>
-          <input type="text" v-model="editingAction.capability" placeholder="e.g. activate" />
+          <label for="action-capability">Capability</label>
+          <input id="action-capability" type="text" v-model="editingAction.capability" placeholder="e.g. activate" class="input input-sm" />
 
-          <label>Args (JSON)</label>
-          <textarea v-model="editingAction.args" rows="3" placeholder='e.g. {"brightness": 100}'></textarea>
+          <label for="action-args">Args (JSON)</label>
+          <textarea id="action-args" v-model="editingAction.args" rows="3" placeholder='e.g. {"brightness": 100}' class="input input-sm mono-input"></textarea>
         </div>
         <div class="form-buttons">
-          <button class="btn-primary" @click="saveAction">Save</button>
-          <button class="btn-secondary" @click="cancelActionForm">Cancel</button>
+          <button class="btn btn-ghost btn-sm" @click="cancelActionForm">Cancel</button>
+          <button class="btn btn-primary btn-sm" @click="saveAction">Save action</button>
         </div>
       </div>
     </section>
@@ -446,13 +456,13 @@ async function deleteAction(action) {
     >
       <defs>
         <marker id="da-head" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#42b983" />
+          <polygon points="0 0, 10 3.5, 0 7" class="drag-arrow-head" />
         </marker>
       </defs>
       <line
         :x1="arrowX1" :y1="arrowY1"
         :x2="arrowX2" :y2="arrowY2"
-        stroke="#42b983"
+        class="drag-arrow-line"
         stroke-width="2"
         stroke-dasharray="6 3"
         marker-end="url(#da-head)"
@@ -465,44 +475,58 @@ async function deleteAction(action) {
 .rule-detail {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
-.detail-header {
-  display: flex;
+.detail-head {
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
 }
-.detail-header h2 { margin: 0; }
 .section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 }
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  gap: 12px;
+  margin-bottom: 10px;
 }
-.section-header h3 { margin: 0; }
+.section-header .section-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* "When … Do …": the rule reads as a sentence. Conditions are what the
+   Appliance reads in (green), actions what it sends out (amber). */
+.when,
+.then {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+}
+.when {
+  color: var(--green-ink);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+.then {
+  color: var(--warm-ink);
+  background: color-mix(in srgb, var(--warm) 15%, transparent);
+}
 .field-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 .field-label {
-  width: 120px;
-  font-weight: 500;
-  color: #444;
+  width: 130px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
   flex-shrink: 0;
 }
 .name-input {
   flex: 1;
-  max-width: 320px;
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 0.95rem;
+  max-width: 340px;
 }
 .enabled-check {
   width: 18px;
@@ -510,89 +534,89 @@ async function deleteAction(action) {
   cursor: pointer;
 }
 .field-value {
-  color: #555;
-  font-size: 0.9rem;
-}
-.cooldown-active {
-  color: #e65100;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.92rem;
 }
 .tree-container {
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 0.75rem;
-  background: #fafafa;
-}
-.empty-hint {
-  color: #999;
-  font-style: italic;
-  font-size: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 16px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
 }
 .save-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 }
 .eval-result {
-  font-size: 0.9rem;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.88rem;
 }
-.eval-true { color: #2e7d32; }
-.eval-false { color: #c62828; }
 .eval-reason {
-  font-weight: normal;
-  color: #555;
+  color: var(--muted);
 }
 .eval-next {
-  font-weight: normal;
-  color: #777;
+  color: var(--faint);
   font-size: 0.85rem;
 }
-.actions-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-  margin-bottom: 0.75rem;
+.out-cell {
+  width: 18px;
+  padding-right: 0;
 }
-.actions-table th,
-.actions-table td {
-  border: 1px solid #e0e0e0;
-  padding: 6px 10px;
-  text-align: left;
+.out-arrow {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--warm);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.actions-table th { background: #f5f5f5; }
-.action-btns { display: flex; gap: 6px; white-space: nowrap; }
+.actions-table .actions .btn + .btn {
+  margin-left: 6px;
+}
 .action-form {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 1rem;
-  background: #fafafa;
-  margin-top: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: 16px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  margin-top: 12px;
 }
-.action-form h4 { margin: 0 0 0.75rem 0; }
+.action-form-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
 .form-grid {
   display: grid;
   grid-template-columns: 110px 1fr;
   gap: 8px 12px;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 14px;
 }
-.form-grid label { font-weight: 500; color: #444; }
-.form-grid input,
-.form-grid select,
-.form-grid textarea {
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  resize: vertical;
+.form-grid label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
 }
-.form-buttons { display: flex; gap: 8px; }
-.error { color: #c62828; margin-bottom: 1rem; }
-.loading { color: #999; }
+.mono-input {
+  font-family: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
 /* Drag arrow — fixed, full-viewport, non-interactive */
 :global(.drag-arrow-svg) {
@@ -604,58 +628,10 @@ async function deleteAction(action) {
   z-index: 9999;
   overflow: visible;
 }
-
-/* Buttons */
-.btn-primary {
-  padding: 6px 18px;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
+:global(.drag-arrow-line) {
+  stroke: var(--green);
 }
-.btn-primary:hover:not(:disabled) { background: #369870; }
-.btn-primary:disabled { opacity: 0.5; cursor: default; }
-.btn-secondary {
-  padding: 5px 14px;
-  background: #fff;
-  color: #42b983;
-  border: 1px solid #42b983;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
+:global(.drag-arrow-head) {
+  fill: var(--green);
 }
-.btn-secondary:hover { background: #f0faf5; }
-.btn-danger {
-  padding: 5px 14px;
-  background: #fff;
-  color: #e53935;
-  border: 1px solid #e53935;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-.btn-danger:hover { background: #ffebee; }
-.btn-danger-sm {
-  padding: 3px 10px;
-  background: #fff;
-  color: #e53935;
-  border: 1px solid #e53935;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.btn-danger-sm:hover { background: #ffebee; }
-.btn-sm {
-  padding: 3px 10px;
-  font-size: 0.8rem;
-  border: 1px solid #aaa;
-  border-radius: 3px;
-  cursor: pointer;
-  background: #fff;
-}
-.btn-sm:hover { background: #f5f5f5; }
-.btn-sm-danger { border-color: #e57373; color: #e53935; }
-.btn-sm-danger:hover { background: #ffebee; }
 </style>

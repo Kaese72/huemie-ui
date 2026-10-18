@@ -44,17 +44,18 @@ function triggerCapability(argumentValues) {
 </script>
 
 <template>
-  <div v-if="error" class="error">Error: {{ error.message }}</div>
-  <div v-else-if="!device" class="empty">Loading...</div>
+  <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
+  <p v-else-if="!device" class="empty m-empty">Loading…</p>
   <template v-else>
-    <div v-if="!device.capabilities.length" class="empty">No capabilities.</div>
+    <p v-if="!device.capabilities.length" class="empty m-empty">No capabilities.</p>
     <button
       v-for="cap in device.capabilities"
       :key="cap.name"
-      class="capability-card"
+      class="m-capability"
       @click="openDialog(cap)"
     >
       {{ cap.name }}
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
     </button>
     <CapabilityDialog
       v-if="selectedCapability"
@@ -67,23 +68,44 @@ function triggerCapability(argumentValues) {
 </template>
 
 <style scoped>
-.capability-card {
+/* Big ghost cards. Pressing one lights it warm for a moment: a command
+   going out to the device. */
+.m-capability {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 12px;
   width: 100%;
-  padding: 1.25rem 1.5rem;
-  background: #42b983;
-  border: none;
-  border-radius: 12px;
-  font-size: 1.2rem;
+  min-height: 64px;
+  padding: 20px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
-
-.capability-card:active { background: #369870; }
-.empty { color: #888; text-align: center; margin-top: 2rem; }
-.error { color: #c0392b; }
+.m-capability svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--warm);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-capability:active {
+  background: color-mix(in srgb, var(--warm) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warm) 55%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--warm) 25%, transparent);
+}
+.m-empty {
+  text-align: center;
+  margin-top: 32px;
+}
 </style>

@@ -123,230 +123,180 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="show" class="dialog-overlay" @click.self="close">
-    <div class="dialog-content">
-      <div class="dialog-header">
-        <h3>Permissions: {{ user?.username }}</h3>
-        <button class="close-btn" @click="close">&times;</button>
-      </div>
-
-      <div class="dialog-body">
-        <div v-if="viewerIsAdmin" class="admin-section">
-          <div class="admin-row">
-            <div>
-              <strong>Admin</strong>
-              <p class="hint">Bypasses every permission check below.</p>
-            </div>
-            <button
-              class="admin-btn"
-              :class="{ 'is-admin': isTargetAdmin }"
-              :disabled="adminSaving"
-              @click="toggleAdmin"
-            >
-              {{ adminSaving ? 'Saving…' : (isTargetAdmin ? 'Revoke Admin' : 'Promote to Admin') }}
-            </button>
-          </div>
-          <div class="row-feedback">
-            <span v-if="adminJustSaved" class="saved-tick">✓ Saved</span>
-            <span v-if="adminError" class="row-error">{{ adminError }}</span>
-          </div>
+  <Teleport to="body">
+    <div v-if="show" class="dialog-backdrop" @click.self="close">
+      <div class="dialog permissions-dialog" role="dialog" aria-modal="true">
+        <div class="dialog-head">
+          <h3 class="dialog-title">Permissions for {{ user?.username }}</h3>
+          <button class="icon-btn" title="Close" aria-label="Close" @click="close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
         </div>
 
-        <p v-if="isTargetAdmin" class="admin-note">
-          This user is an admin and has full access to everything. The permissions below
-          have no effect until admin is revoked.
-        </p>
-
-        <div v-if="resourcesError" class="row-error">{{ resourcesError }}</div>
-
-        <div class="resource-list">
-          <div
-            v-for="resource in resources"
-            :key="resource.code"
-            class="resource-row"
-            :class="{ disabled: isTargetAdmin }"
-          >
-            <div class="resource-name">{{ resource.name }}</div>
-            <div class="segmented">
+        <div class="dialog-body">
+          <div v-if="viewerIsAdmin" class="admin-section">
+            <div class="admin-row">
+              <div>
+                <strong class="admin-label">Admin</strong>
+                <p class="hint admin-hint">Bypasses every permission check below.</p>
+              </div>
               <button
-                v-for="lvl in LEVELS"
-                :key="lvl.value"
-                type="button"
-                class="segment"
-                :class="{ active: levels[resource.code] === lvl.value }"
-                :disabled="isTargetAdmin || rowState[resource.code]?.saving"
-                @click="selectLevel(resource.code, lvl.value)"
+                class="btn btn-sm"
+                :class="isTargetAdmin ? 'btn-danger' : 'btn-ghost'"
+                :disabled="adminSaving"
+                @click="toggleAdmin"
               >
-                {{ lvl.label }}
+                {{ adminSaving ? 'Saving…' : (isTargetAdmin ? 'Revoke admin' : 'Make admin') }}
               </button>
             </div>
             <div class="row-feedback">
-              <span v-if="rowState[resource.code]?.saving" class="saving">Saving…</span>
-              <span v-else-if="rowState[resource.code]?.justSaved" class="saved-tick">✓ Saved</span>
-              <span v-if="rowState[resource.code]?.error" class="row-error">{{ rowState[resource.code].error }}</span>
+              <span v-if="adminJustSaved" class="saved-tick">✓ Saved</span>
+              <span v-if="adminError" class="row-error">{{ adminError }}</span>
+            </div>
+          </div>
+
+          <p v-if="isTargetAdmin" class="alert alert-warning">
+            This user is an admin and has full access to everything. The permissions below
+            have no effect until admin is revoked.
+          </p>
+
+          <div v-if="resourcesError" class="alert alert-error">{{ resourcesError }}</div>
+
+          <div class="resource-list">
+            <div
+              v-for="resource in resources"
+              :key="resource.code"
+              class="resource-row"
+              :class="{ disabled: isTargetAdmin }"
+            >
+              <div class="resource-name">{{ resource.name }}</div>
+              <div class="segmented">
+                <button
+                  v-for="lvl in LEVELS"
+                  :key="lvl.value"
+                  type="button"
+                  class="segment"
+                  :class="{ active: levels[resource.code] === lvl.value }"
+                  :disabled="isTargetAdmin || rowState[resource.code]?.saving"
+                  @click="selectLevel(resource.code, lvl.value)"
+                >
+                  {{ lvl.label }}
+                </button>
+              </div>
+              <div class="row-feedback">
+                <span v-if="rowState[resource.code]?.saving" class="saving">Saving…</span>
+                <span v-else-if="rowState[resource.code]?.justSaved" class="saved-tick">✓ Saved</span>
+                <span v-if="rowState[resource.code]?.error" class="row-error">{{ rowState[resource.code].error }}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="dialog-footer">
-        <button class="btn btn-secondary" @click="close">Done</button>
+        <div class="dialog-actions">
+          <button class="btn btn-ghost" @click="close">Done</button>
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.dialog-content {
-  background: white;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 480px;
-  max-height: 80vh;
+.permissions-dialog {
+  width: 500px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
-.dialog-header {
+.dialog-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
+  gap: 12px;
+  margin-bottom: 18px;
 }
-.dialog-header h3 { margin: 0; font-size: 1.15rem; color: #333; }
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  line-height: 1;
-  cursor: pointer;
-  color: #999;
-  padding: 0;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.dialog-head .dialog-title {
+  margin: 0;
 }
-.close-btn:hover { color: #333; }
 .dialog-body {
-  padding: 1.25rem 1.5rem;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 .admin-section {
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #eee;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .admin-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 16px;
 }
-.admin-row strong { color: #333; }
-.hint { margin: 0.15rem 0 0; font-size: 0.8rem; color: #777; }
-.admin-btn {
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  border: 1px solid #1565c0;
-  background: #1565c0;
-  color: #fff;
-  cursor: pointer;
-  font-size: 0.85rem;
-  white-space: nowrap;
+.admin-label {
+  font-weight: 600;
 }
-.admin-btn.is-admin {
-  border-color: #c62828;
-  background: #fff;
-  color: #c62828;
-}
-.admin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.admin-note {
-  background: #fff8e1;
-  border: 1px solid #ffe082;
-  color: #7a5d00;
-  padding: 0.6rem 0.8rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  margin: 0 0 1rem;
+.admin-hint {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
 }
 .resource-list {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 6px;
 }
 .resource-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 12px;
   flex-wrap: wrap;
 }
 .resource-row.disabled { opacity: 0.5; }
-.resource-name { font-weight: 500; color: #333; min-width: 8rem; }
+.resource-name {
+  font-weight: 500;
+  min-width: 8rem;
+}
+/* Segmented control: neutral, the active segment is lifted like a tab. */
 .segmented {
   display: inline-flex;
-  border: 1px solid #d0d0d0;
-  border-radius: 20px;
-  overflow: hidden;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
   flex-shrink: 0;
 }
 .segment {
-  padding: 0.3rem 0.85rem;
+  padding: 5px 14px;
   border: none;
-  background: #fff;
-  color: #444;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
   cursor: pointer;
-  font-size: 0.8rem;
-  border-right: 1px solid #d0d0d0;
+  transition: background 0.2s, color 0.2s;
 }
-.segment:last-child { border-right: none; }
-.segment.active { background: #1565c0; color: #fff; }
+.segment.active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--shadow-ink) 20%, transparent);
+}
 .segment:disabled { cursor: not-allowed; }
-.segment:hover:not(:disabled):not(.active) { background: #f0f4fa; }
+.segment:hover:not(:disabled):not(.active) { color: var(--text); }
 .row-feedback {
   flex-basis: 100%;
   min-height: 1.1rem;
   display: flex;
-  gap: 0.6rem;
+  gap: 10px;
   font-size: 0.78rem;
 }
-.saving { color: #888; }
+.saving { color: var(--faint); }
 .saved-tick {
-  color: #2e7d32;
-  font-weight: 500;
-  animation: fade-in 0.15s ease-in;
+  color: var(--green-ink);
+  font-weight: 600;
+  animation: ui-fade-in 0.15s ease-in;
 }
-.row-error { color: #c62828; }
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-.btn {
-  padding: 0.45rem 1.1rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.btn-secondary { background: #f5f5f5; color: #333; }
-.btn-secondary:hover { background: #e0e0e0; }
+.row-error { color: var(--danger-ink); }
 </style>

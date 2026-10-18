@@ -24,7 +24,6 @@ defineProps({
 
 <style scoped>
 .value-na {
-  color: #888;
-  opacity: 0.4;
+  color: var(--faint);
 }
 </style>

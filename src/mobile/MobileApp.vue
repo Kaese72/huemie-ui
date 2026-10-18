@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMobileTitle } from '../composables/useMobileTitle.js'
+import BrandMark from '../components/BrandMark.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,8 +30,16 @@ function goBack() {
 <template>
   <div class="mobile-app">
     <header class="mobile-header">
-      <button v-if="canGoBack" class="back-btn" @click="goBack">&#8592;</button>
-      <h1 class="mobile-title">{{ title }}</h1>
+      <div class="side">
+        <button v-if="canGoBack" class="icon-btn back-btn" aria-label="Back" title="Back" @click="goBack">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+        </button>
+        <BrandMark v-else class="mobile-brand" />
+      </div>
+      <h1 v-if="canGoBack" class="mobile-title">{{ title }}</h1>
+      <div class="side side-right">
+        <ThemeToggle />
+      </div>
     </header>
     <div class="mobile-content">
       <router-view />
@@ -38,45 +48,64 @@ function goBack() {
 </template>
 
 <style scoped>
+/* DESIGN.md (this repo), section 7 "Mobile view": a remote control. */
 .mobile-app {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f7f9fa;
+  height: 100dvh;
+  background: var(--bg);
 }
-
 .mobile-header {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  background: #222e3a;
-  color: #fff;
-  padding: 1rem 1.25rem;
+  justify-content: space-between;
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px;
   flex-shrink: 0;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
 }
-
+.side {
+  display: flex;
+  align-items: center;
+  min-width: 44px;
+}
+.side-right {
+  justify-content: flex-end;
+}
 .back-btn {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0 0.25rem;
-  line-height: 1;
+  width: 44px;
+  height: 44px;
+  margin-left: -6px;
 }
-
+.back-btn svg {
+  width: 22px;
+  height: 22px;
+}
 .mobile-title {
+  position: absolute;
+  left: 72px;
+  right: 72px;
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: bold;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
 .mobile-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 12px;
 }
 </style>

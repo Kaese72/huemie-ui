@@ -173,7 +173,9 @@ function cellStyle(col) {
     </div>
     <div class="pagination-footer">
       <button v-if="showFirst" class="page-btn" @click="emit('go-to-page', 0)">0</button>
-      <button class="page-btn nav-btn" :disabled="currentPage === 0" @click="emit('go-to-page', currentPage - 1)">&lt;</button>
+      <button class="page-btn nav-btn" :disabled="currentPage === 0" title="Previous page" aria-label="Previous page" @click="emit('go-to-page', currentPage - 1)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+      </button>
       <button
         v-for="p in pageWindow"
         :key="p"
@@ -181,14 +183,20 @@ function cellStyle(col) {
         :class="{ current: p === currentPage }"
         :disabled="p === currentPage"
         @click="emit('go-to-page', p)"
-      >{{ p === currentPage ? `[${p}]` : p }}</button>
-      <button class="page-btn nav-btn" :disabled="currentPage === totalPages - 1" @click="emit('go-to-page', currentPage + 1)">&gt;</button>
+        :aria-current="p === currentPage ? 'page' : null"
+      >{{ p }}</button>
+      <button class="page-btn nav-btn" :disabled="currentPage === totalPages - 1" title="Next page" aria-label="Next page" @click="emit('go-to-page', currentPage + 1)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+      </button>
       <button v-if="showLast" class="page-btn" @click="emit('go-to-page', totalPages - 1)">{{ totalPages - 1 }}</button>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* See DESIGN.md (this repo), section 4 "Tables". Row and header heights
+   must stay 40px - they are ROW_HEIGHT_PX / HEADER_HEIGHT_PX in
+   tableLayout.js, which the page size is calculated from. */
 .table-shell {
   width: 100%;
   height: 100%;
@@ -197,11 +205,12 @@ function cellStyle(col) {
   flex-direction: column;
   overflow: hidden;
   transition: width 0.2s;
-  /* Divides the whole table area (header, rows, footer) from the
-     surrounding page on every side, not just the shadow that previously
-     only separated the header from what's below it. */
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  /* The whole table area (header, rows, footer) sits in one panel. */
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 20px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ink) 3.5%, transparent),
+    color-mix(in srgb, var(--ink) 1.5%, transparent));
   box-sizing: border-box;
 }
 .table-wrapper {
@@ -222,10 +231,13 @@ function cellStyle(col) {
   height: 40px;
 }
 .table-header {
-  font-weight: bold;
-  background: #f5f5f5;
-  border-bottom: 2px solid #ddd;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: color-mix(in srgb, var(--ink) 3%, var(--bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
   /* top-only: .table-wrapper's overflow-y is hidden (pagination, not
      vertical scroll, changes pages), so this is inert today but harmless -
      left:0 was deliberately dropped: it stuck the header at the viewport's
@@ -238,23 +250,30 @@ function cellStyle(col) {
 }
 .table-row {
   cursor: pointer;
-  border-bottom: 1px solid #eee;
-  transition: background 0.2s;
+  font-size: 0.9rem;
+  color: var(--text);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  transition: background 0.2s, box-shadow 0.2s;
 }
+.table-row:hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+/* Selected (detail open): green tint plus a bar on the left edge. An inset
+   shadow, so nothing in the row moves. */
 .table-row.selected {
-  background: #e6f7ff;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--green);
 }
 .table-cell {
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   box-sizing: border-box;
-  /* Same left/right divider treatment as .header-cell (TableHeaderCell.vue),
-     so rows read as distinct columns rather than one continuous strip -
-     previously only the header had this. */
-  border-left: 1px solid rgba(0, 0, 0, 0.08);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  /* Same faint column dividers as .header-cell (TableHeaderCell.vue), so
+     rows read as distinct columns. */
+  border-left: 1px solid color-mix(in srgb, var(--ink) 4%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--ink) 4%, transparent);
   margin-left: -1px;
 }
 /* .header-cell's own layout (flex/gap/clickable cursor), .header-label,
@@ -268,35 +287,52 @@ function cellStyle(col) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  height: 44px;
-  border-top: 2px solid #ddd;
-  background: #f5f5f5;
+  gap: 4px;
+  height: 48px;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .page-btn {
-  min-width: 2rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
   cursor: pointer;
   font: inherit;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.2s, color 0.2s;
 }
 .page-btn:hover:not(:disabled) {
-  background: #e6f7ff;
+  color: var(--text);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.page-btn:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
 .page-btn:disabled {
   cursor: default;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 .page-btn.current {
-  font-weight: bold;
-  border-color: #1890ff;
-  color: #1890ff;
-  background: #fff;
+  font-weight: 700;
+  color: var(--text);
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  opacity: 1;
   cursor: default;
 }
-.nav-btn {
-  font-weight: bold;
+.nav-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 </style>

@@ -232,9 +232,14 @@ const selectedId = computed(() => route.params.id)
 </script>
 
 <template>
-  <div class="device-table">
-    <h1>Devices</h1>
-    <div v-if="error">Error: {{ error.message }}</div>
+  <div class="list-page">
+    <div class="list-head">
+      <div>
+        <h1 class="list-title">Devices</h1>
+        <p class="list-lede">Everything your adapters have found in your home.</p>
+      </div>
+    </div>
+    <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
     <div class="split-content">
       <TableShell
         :columns="columns"
@@ -266,24 +271,3 @@ const selectedId = computed(() => route.params.id)
     </div>
   </div>
 </template>
-
-<style scoped>
-.device-table {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.device-table h1 {
-  margin-bottom: 0.5rem;
-}
-.split-content {
-  flex: 1 1 0;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-}
-</style>

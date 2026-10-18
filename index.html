@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vite App</title>
+    <title>Humi</title>
+    <script>
+      // Apply the saved theme - or, if the user never chose one, light by day
+      // (07-19 local time) and dark otherwise - before first paint.
+      // Must match src/composables/useTheme.js.
+      (function () {
+        var theme = null
+        try { theme = localStorage.getItem('humi-theme') } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          var hour = new Date().getHours()
+          theme = hour >= 7 && hour < 19 ? 'light' : 'dark'
+        }
+        document.documentElement.dataset.theme = theme
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

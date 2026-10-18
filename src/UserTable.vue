@@ -38,7 +38,7 @@ const columns = [
   { key: 'local', label: 'Local', width: '55px' },
   { key: 'cloud', label: 'Cloud', width: '55px' },
   { key: 'isAdmin', label: 'Admin', width: '55px', filter: { type: 'boolean' } },
-  { key: 'actions', label: '', width: '300px' },
+  { key: 'actions', label: '', width: '320px' },
 ]
 
 async function fetchPage({ offset, limit, filters, sort }) {
@@ -175,12 +175,17 @@ const selectedId = computed(() => route.params.id)
 </script>
 
 <template>
-  <div class="user-table">
-    <div class="pane-header">
-      <h1>Users</h1>
-      <button class="btn-create" @click="openCreateDialog">+ New user</button>
+  <div class="list-page">
+    <div class="list-head">
+      <div>
+        <h1 class="list-title">Users</h1>
+        <p class="list-lede">Who can sign in to this Appliance, and what they may do.</p>
+      </div>
+      <div class="list-actions">
+        <button class="btn btn-primary" @click="openCreateDialog">New user</button>
+      </div>
     </div>
-    <div v-if="error" class="error">Error: {{ error.message }}</div>
+    <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
     <div class="split-content">
       <TableShell
         :columns="columns"
@@ -203,10 +208,16 @@ const selectedId = computed(() => route.params.id)
       >
         <template #cell-username="{ row }">
           {{ row.username }}
-          <span v-if="row.id === currentUserId" class="badge-you">YOU</span>
+          <span v-if="row.id === currentUserId" class="badge badge-warm badge-you">You</span>
         </template>
-        <template #cell-name="{ row }">{{ [row.name, row.surname].filter(Boolean).join(' ') || '—' }}</template>
-        <template #cell-email="{ row }">{{ row.email || '—' }}</template>
+        <template #cell-name="{ row }">
+          <template v-if="[row.name, row.surname].filter(Boolean).length">{{ [row.name, row.surname].filter(Boolean).join(' ') }}</template>
+          <span v-else class="na">—</span>
+        </template>
+        <template #cell-email="{ row }">
+          <template v-if="row.email">{{ row.email }}</template>
+          <span v-else class="na">—</span>
+        </template>
         <template #cell-local="{ row }"><BoolBadge :value="!!row.localLogin" /></template>
         <template #cell-cloud="{ row }"><BoolBadge :value="!!row.cloudLogin" /></template>
         <template #cell-isAdmin="{ row }"><BoolBadge :value="!!row.permissions?.admin" /></template>
@@ -214,25 +225,25 @@ const selectedId = computed(() => route.params.id)
           <div class="actions-cell">
             <button
               v-if="row.id === currentUserId"
-              class="btn-change-password"
+              class="btn btn-ghost btn-xs"
               @click.stop="openPasswordDialog"
             >
-              Change Password
+              Change password
             </button>
             <button
               v-if="canManagePermissions"
-              class="btn-permissions"
+              class="btn btn-ghost btn-xs"
               @click.stop="openPermissionsDialog(row.id)"
             >
               Permissions
             </button>
-            <button class="btn-delete" @click.stop="deleteUser(row.id, row.username)">Delete</button>
+            <button class="btn btn-danger btn-xs" @click.stop="deleteUser(row.id, row.username)">Delete</button>
           </div>
         </template>
         <template #empty>
-          <div class="empty">
+          <div class="table-empty">
             <p>No users yet.</p>
-            <p>Click <strong>+ New user</strong> to create one.</p>
+            <p>Click <strong>New user</strong> to create one.</p>
           </div>
         </template>
       </TableShell>
@@ -242,98 +253,124 @@ const selectedId = computed(() => route.params.id)
     </div>
 
     <div v-if="showCreateDialog" class="dialog-backdrop" @click.self="closeCreateDialog">
-      <div class="dialog">
-        <h3>Create user</h3>
-        <input
-          v-model="newUser.username"
-          class="create-input"
-          type="text"
-          placeholder="Username"
-          autocomplete="username"
-          :disabled="creating"
-        />
-        <input
-          v-model="newUser.password"
-          class="create-input"
-          type="password"
-          placeholder="Password"
-          autocomplete="new-password"
-          :disabled="creating"
-        />
-        <input
-          v-model="newUser.name"
-          class="create-input"
-          type="text"
-          placeholder="Name"
-          :disabled="creating"
-        />
-        <input
-          v-model="newUser.surname"
-          class="create-input"
-          type="text"
-          placeholder="Surname"
-          :disabled="creating"
-        />
-        <input
-          v-model="newUser.email"
-          class="create-input"
-          type="email"
-          placeholder="Email (optional)"
-          :disabled="creating"
-          @keyup.enter="createUser"
-        />
-        <div v-if="createError" class="dialog-error">{{ createError }}</div>
+      <div class="dialog" role="dialog" aria-modal="true">
+        <h3 class="dialog-title">New user</h3>
+        <div class="field">
+          <label for="new-username">Username</label>
+          <input
+            id="new-username"
+            v-model="newUser.username"
+            class="input"
+            type="text"
+            autocomplete="username"
+            :disabled="creating"
+          />
+        </div>
+        <div class="field">
+          <label for="new-password">Password</label>
+          <input
+            id="new-password"
+            v-model="newUser.password"
+            class="input"
+            type="password"
+            autocomplete="new-password"
+            :disabled="creating"
+          />
+        </div>
+        <div class="name-pair">
+          <div class="field">
+            <label for="new-name">Name</label>
+            <input
+              id="new-name"
+              v-model="newUser.name"
+              class="input"
+              type="text"
+              :disabled="creating"
+            />
+          </div>
+          <div class="field">
+            <label for="new-surname">Surname</label>
+            <input
+              id="new-surname"
+              v-model="newUser.surname"
+              class="input"
+              type="text"
+              :disabled="creating"
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label for="new-email">Email (optional)</label>
+          <input
+            id="new-email"
+            v-model="newUser.email"
+            class="input"
+            type="email"
+            :disabled="creating"
+            @keyup.enter="createUser"
+          />
+        </div>
+        <div v-if="createError" class="alert alert-error">{{ createError }}</div>
         <div class="dialog-actions">
+          <button class="btn btn-ghost" :disabled="creating" @click="closeCreateDialog">Cancel</button>
           <button
-            class="dialog-save-button"
+            class="btn btn-primary"
             :disabled="creating || !newUser.username || !newUser.password"
             @click="createUser"
           >
-            {{ creating ? 'Creating...' : 'Create' }}
+            {{ creating ? 'Creating…' : 'Create' }}
           </button>
-          <button class="dialog-cancel-button" :disabled="creating" @click="closeCreateDialog">Cancel</button>
         </div>
       </div>
     </div>
 
     <div v-if="showPasswordDialog" class="dialog-backdrop" @click.self="closePasswordDialog">
-      <div class="dialog">
-        <h3>Change password</h3>
-        <input
-          v-model="passwordForm.currentPassword"
-          class="create-input"
-          type="password"
-          placeholder="Current password"
-          autocomplete="current-password"
-          :disabled="changingPassword"
-        />
-        <input
-          v-model="passwordForm.newPassword"
-          class="create-input"
-          type="password"
-          placeholder="New password"
-          autocomplete="new-password"
-          :disabled="changingPassword"
-        />
-        <input
-          v-model="passwordForm.confirmPassword"
-          class="create-input"
-          type="password"
-          placeholder="Confirm new password"
-          autocomplete="new-password"
-          :disabled="changingPassword"
-          @keyup.enter="changePassword"
-        />
-        <div v-if="passwordError" class="dialog-error">{{ passwordError }}</div>
+      <div class="dialog" role="dialog" aria-modal="true">
+        <h3 class="dialog-title">Change password</h3>
+        <div class="field">
+          <label for="current-password">Current password</label>
+          <input
+            id="current-password"
+            v-model="passwordForm.currentPassword"
+            class="input"
+            type="password"
+            autocomplete="current-password"
+            :disabled="changingPassword"
+          />
+        </div>
+        <div class="field">
+          <label for="new-password-1">New password</label>
+          <input
+            id="new-password-1"
+            v-model="passwordForm.newPassword"
+            class="input"
+            type="password"
+            autocomplete="new-password"
+            :disabled="changingPassword"
+          />
+        </div>
+        <div class="field">
+          <label for="new-password-2">Confirm new password</label>
+          <input
+            id="new-password-2"
+            v-model="passwordForm.confirmPassword"
+            class="input"
+            type="password"
+            autocomplete="new-password"
+            :disabled="changingPassword"
+            @keyup.enter="changePassword"
+          />
+        </div>
+        <div v-if="passwordError" class="alert alert-error">{{ passwordError }}</div>
         <div class="dialog-actions">
+          <button class="btn btn-ghost" :disabled="changingPassword" @click="closePasswordDialog">Cancel</button>
           <button
-            class="dialog-save-button"
+            class="btn btn-primary"
             :disabled="changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword"
             @click="changePassword"
           >
-            {{ changingPassword ? 'Saving...' : 'Save' }}
+            {{ changingPassword ? 'Saving…' : 'Save' }}
           </button>
-          <button class="dialog-cancel-button" :disabled="changingPassword" @click="closePasswordDialog">Cancel</button>
         </div>
       </div>
     </div>
@@ -349,148 +386,25 @@ const selectedId = computed(() => route.params.id)
 </template>
 
 <style scoped>
-.user-table {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.split-content {
-  flex: 1 1 0;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-}
-.pane-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: 1rem;
-  flex-shrink: 0;
-}
-.pane-header h1 {
-  margin-bottom: 0.5rem;
-}
-.btn-create {
-  padding: 0.4rem 1rem;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.btn-create:hover { background: #369870; }
-.error { color: red; padding: 0.5rem; }
-.actions-cell { display: flex; justify-content: flex-end; gap: 0.4rem; width: 100%; }
-.badge-you {
-  margin-left: 0.5rem;
-  padding: 0.1rem 0.4rem;
-  background: #1565c0;
-  color: #fff;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  letter-spacing: 0.03em;
-}
-.btn-delete {
-  padding: 0.25rem 0.6rem;
-  background: #fff;
-  color: #c62828;
-  border: 1px solid #c62828;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.btn-delete:hover { background: #c62828; color: #fff; }
-.btn-change-password {
-  padding: 0.25rem 0.6rem;
-  background: #1565c0;
-  color: #fff;
-  border: 1px solid #1565c0;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.btn-change-password:hover { background: #0d47a1; }
-.btn-permissions {
-  padding: 0.25rem 0.6rem;
-  background: #fff;
-  color: #555;
-  border: 1px solid #999;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.btn-permissions:hover { background: #f0f0f0; }
-.empty {
-  padding: 2rem 1rem;
-  color: #999;
-  font-style: italic;
-  text-align: center;
-}
-.empty p { margin: 0.25rem 0; }
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-}
-.dialog {
-  width: 360px;
-  max-width: calc(100vw - 2rem);
-  background: #fff;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  padding: 1rem;
-}
-.dialog h3 {
-  margin-top: 0;
-  margin-bottom: 0.8rem;
-}
-.create-input {
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-  margin-bottom: 0.6rem;
-}
-.create-input:disabled { background: #f5f5f5; }
-.dialog-error {
-  color: #c62828;
-  font-size: 0.85rem;
-  margin-bottom: 0.6rem;
-}
-.dialog-actions {
+.actions-cell {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 6px;
+  width: 100%;
 }
-.dialog-save-button,
-.dialog-cancel-button {
-  padding: 0.45rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
+.badge-you {
+  margin-left: 8px;
 }
-.dialog-save-button {
-  border: 1px solid #2e7d32;
-  background: #2e7d32;
-  color: #fff;
+.name-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
 }
-.dialog-save-button:disabled,
-.dialog-cancel-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.name-pair + .field {
+  margin-top: 14px;
 }
-.dialog-cancel-button {
-  border: 1px solid #d0d0d0;
-  background: #f4f4f4;
-  color: #222;
+.name-pair .field + .field {
+  margin-top: 0;
 }
 </style>

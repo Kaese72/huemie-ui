@@ -1,0 +1,101 @@
+/*
+ * Humi theme tokens - see DESIGN.md for what each role means.
+ *
+ * The theme is chosen by data-theme="dark" | "light" on <html> (set before
+ * first paint by the inline script in index.html, and toggled by
+ * useTheme.js). Without the attribute the dark values apply.
+ *
+ * Translucent variants are derived in components with
+ * color-mix(in srgb, var(--token) N%, transparent), so only the solid colours
+ * live here.
+ */
+
+:root,
+:root[data-theme="dark"] {
+  --scheme: dark;
+
+  /* neutrals */
+  --bg: #0b1119;
+  --interior: #0f1620;
+  --surface: #121b27;
+  --surface-2: #152030;
+  --text: #f3efe8;
+  --muted: #9aa8b8;
+  --faint: #5f6d7d;
+  --ink: #ffffff;          /* base for translucent lines and fills */
+  --shadow-ink: #000000;   /* base for depth shadows */
+  --icon: #dfe6ee;
+  --track: #2a3747;
+  --door: #3a2a1c;
+
+  /* meaning */
+  --warm: #ffc46b;         /* home / Appliance / local */
+  --warm-deep: #ffb547;
+  --warm-light: #ffd68f;
+  --warm-ink: #ffc46b;     /* home accent used as text */
+  --on-warm: #2a1a05;
+  --green: #42b983;        /* live / connected / OK */
+  --green-ink: #42b983;
+  --cloud: #8fc7ff;        /* Cloud / optional */
+  --cloud-ink: #8fc7ff;
+  --danger: #ff8a7a;       /* destructive actions, errors */
+  --danger-ink: #ff9c8f;
+
+  /* the cloud shape */
+  --cloud-top: #eaf6ff;
+  --cloud-bottom: #9fb8cc;
+  --cloud-label: #2b4157;
+  --cloud-off-filter: grayscale(1) brightness(0.55);
+
+  /* primary action */
+  --btn-primary-bg: linear-gradient(135deg, #ffd68f, #ffb547);
+  --btn-primary-text: #2a1a05;
+  --btn-primary-glow: #ffb547;
+
+  --humi-gradient: linear-gradient(100deg, #ffc46b 0%, #ffe2a8 25%, #42b983 55%, #ffc46b 85%);
+  --ambient: 1;            /* strength of decorative light (fireflies) */
+}
+
+:root[data-theme="light"] {
+  --scheme: light;
+
+  /* neutrals: warm greys */
+  --bg: #ebe9e5;
+  --interior: #e2dfda;
+  --surface: #f8f7f4;
+  --surface-2: #f8f7f4;
+  --text: #24221f;
+  --muted: #5d5851;
+  --faint: #8a847b;
+  --ink: #2b2722;
+  --shadow-ink: #4a4033;
+  --icon: #3a3631;
+  --track: #cdc9c2;
+  --door: #6e5136;
+
+  /* meaning: deeper so they read clearly against the light background */
+  --warm: #c98420;
+  --warm-deep: #d38f2c;
+  --warm-light: #f0c27f;
+  --warm-ink: #8a560f;
+  --on-warm: #2a1a05;
+  --green: #2a9d68;
+  --green-ink: #1d7a50;
+  --cloud: #4f86bd;
+  --cloud-ink: #2f5f8f;
+  --danger: #c4452f;
+  --danger-ink: #a3361f;
+
+  --cloud-top: #f4f8fb;
+  --cloud-bottom: #b4c9dc;
+  --cloud-label: #2f4a63;
+  --cloud-off-filter: grayscale(1) opacity(0.55);
+
+  /* light mode leads with green for actions */
+  --btn-primary-bg: linear-gradient(135deg, #36b27b, #23865a);
+  --btn-primary-text: #ffffff;
+  --btn-primary-glow: #2a9d68;
+
+  --humi-gradient: linear-gradient(100deg, #b8741a 0%, #d69a3e 25%, #23865a 55%, #b8741a 85%);
+  --ambient: 0.55;
+}

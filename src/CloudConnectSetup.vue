@@ -76,97 +76,114 @@ async function disconnect() {
 </script>
 
 <template>
-  <div class="cloud-connect-page">
-    <h1>Cloud Connect</h1>
-    <div v-if="error" class="error">{{ error }}</div>
-
-    <div v-if="status" class="panel">
-      <p>
-        Status:
-        <span class="badge" :class="`badge-${status.status}`">{{ status.status }}</span>
-        <span v-if="status.status === 'enrolled'" class="badge" :class="status.tunnelConnected ? 'badge-connected' : 'badge-disconnected'">
-          {{ status.tunnelConnected ? 'connected' : 'disconnected' }}
-        </span>
+  <div class="scroll-page">
+    <div class="page page-narrow enter">
+      <p class="kicker cloud-kicker">Optional</p>
+      <h1 class="page-title">Cloud Connect</h1>
+      <p class="page-lede">
+        Connect this Appliance to Humi Cloud for remote access. Your home keeps
+        working on its own either way.
       </p>
-      <p v-if="status.hostname" class="hostname">{{ status.hostname }}</p>
 
-      <button v-if="status.status === 'unenrolled'" class="btn-connect" :disabled="connecting" @click="connectToCloud">
-        {{ connecting ? 'Connecting…' : 'Connect to Cloud' }}
-      </button>
-      <template v-else>
-        <button class="btn-rotate" :disabled="rotating || resetting" @click="rotateSecret">
-          {{ rotating ? 'Rotating…' : 'Rotate secret' }}
-        </button>
-        <button class="btn-disconnect" :disabled="resetting || rotating" @click="disconnect">
-          {{ resetting ? 'Disconnecting…' : 'Disconnect' }}
-        </button>
-        <p v-if="rotated" class="notice">Secret rotated.</p>
-      </template>
+      <div v-if="error" class="alert alert-error">{{ error }}</div>
+
+      <section v-if="status" class="panel panel-cloud">
+        <!-- Home - tunnel - Cloud. The line lights up green while connected. -->
+        <div
+          class="link-visual"
+          :class="{ enrolled: status.status === 'enrolled', live: status.status === 'enrolled' && status.tunnelConnected }"
+          aria-hidden="true"
+        >
+          <svg class="end home" viewBox="0 0 32 32">
+            <path d="M5 15 16 6l11 9v11H5z" />
+            <rect x="13" y="18" width="6" height="8" rx="1" />
+          </svg>
+          <span class="tunnel" />
+          <svg class="end cloud" viewBox="0 0 32 32">
+            <path d="M9 24h15a5 5 0 0 0 .6-9.96A7 7 0 0 0 11.2 12.2 6 6 0 0 0 9 24z" />
+          </svg>
+        </div>
+
+        <dl class="kv">
+          <dt>Status</dt>
+          <dd>
+            <span class="badge" :class="status.status === 'enrolled' ? 'badge-cloud' : 'badge-neutral'">{{ status.status }}</span>
+            <span v-if="status.status === 'enrolled'" class="badge" :class="status.tunnelConnected ? 'badge-green' : 'badge-warm'">
+              {{ status.tunnelConnected ? 'connected' : 'disconnected' }}
+            </span>
+          </dd>
+          <template v-if="status.hostname">
+            <dt>Hostname</dt>
+            <dd class="mono">{{ status.hostname }}</dd>
+          </template>
+        </dl>
+
+        <div class="form-actions">
+          <button v-if="status.status === 'unenrolled'" class="btn btn-cloud" :disabled="connecting" @click="connectToCloud">
+            {{ connecting ? 'Connecting…' : 'Connect to Humi Cloud' }}
+          </button>
+          <template v-else>
+            <button class="btn btn-ghost" :disabled="rotating || resetting" @click="rotateSecret">
+              {{ rotating ? 'Rotating…' : 'Rotate secret' }}
+            </button>
+            <button class="btn btn-danger" :disabled="resetting || rotating" @click="disconnect">
+              {{ resetting ? 'Disconnecting…' : 'Disconnect' }}
+            </button>
+          </template>
+        </div>
+        <div v-if="rotated" class="alert alert-success">Secret rotated.</div>
+      </section>
+      <p v-else-if="!error" class="empty">Loading…</p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.cloud-connect-page {
-  width: 100%;
-  max-width: 560px;
+.cloud-kicker {
+  color: var(--cloud-ink);
 }
-.panel {
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1.25rem 1.5rem;
+.link-visual {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 22px;
 }
-.hostname {
-  color: #555;
-  font-size: 0.9rem;
+.end {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
 }
-.badge {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+.home {
+  stroke: var(--warm);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--warm) 50%, transparent));
 }
-.badge-unenrolled { background: #f0f0f0; color: #666; }
-.badge-enrolled { background: #d4edda; color: #1b5e20; }
-.badge-connected { background: #d4edda; color: #1b5e20; }
-.badge-disconnected { background: #fff3cd; color: #856404; }
-.btn-connect, .btn-disconnect, .btn-rotate {
-  margin-top: 1rem;
-  margin-right: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
+.home rect {
+  fill: var(--warm);
+  stroke: none;
 }
-.btn-connect {
-  background: #42b983;
-  color: #fff;
+.cloud {
+  stroke: var(--cloud);
+  filter: var(--cloud-off-filter);
+  transition: filter 0.4s;
 }
-.btn-connect:hover:not(:disabled) { background: #369b6f; }
-.btn-disconnect {
-  background: #fff;
-  color: #c62828;
-  border: 1px solid #c62828;
+.enrolled .cloud {
+  filter: none;
 }
-.btn-disconnect:hover:not(:disabled) { background: #c62828; color: #fff; }
-.btn-rotate {
-  background: #fff;
-  color: #333;
-  border: 1px solid #999;
+.tunnel {
+  flex: 1;
+  height: 0;
+  border-top: 2px dashed color-mix(in srgb, var(--cloud) 40%, transparent);
+  transition: border-color 0.4s, box-shadow 0.4s;
 }
-.btn-rotate:hover:not(:disabled) { background: #f0f0f0; }
-.btn-connect:disabled, .btn-disconnect:disabled, .btn-rotate:disabled { opacity: 0.6; cursor: default; }
-.notice {
-  color: #1b5e20;
-  font-size: 0.9rem;
+.live .tunnel {
+  border-top-style: solid;
+  border-top-color: var(--green);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--green) 60%, transparent);
 }
-.error {
-  color: #c62828;
-  padding: 0.5rem 0;
-  font-size: 0.9rem;
+.panel .alert {
+  margin-bottom: 0;
 }
 </style>

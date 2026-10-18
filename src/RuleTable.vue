@@ -90,12 +90,17 @@ function onRuleDeleted() {
 </script>
 
 <template>
-  <div class="rule-view">
-    <div class="pane-header">
-      <h1>Rules</h1>
-      <button class="btn-create" @click="createRule">+ New rule</button>
+  <div class="list-page">
+    <div class="list-head">
+      <div>
+        <h1 class="list-title">Rules</h1>
+        <p class="list-lede">When something happens at home, do something about it.</p>
+      </div>
+      <div class="list-actions">
+        <button class="btn btn-primary" @click="createRule">New rule</button>
+      </div>
     </div>
-    <div v-if="error" class="error">Error: {{ error.message }}</div>
+    <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
     <div class="split-content">
       <TableShell
         :columns="columns"
@@ -119,17 +124,19 @@ function onRuleDeleted() {
         <template #cell-enabled="{ row }"><BoolBadge :value="row.enabled" /></template>
         <template #cell-actions="{ row }">{{ row.actions?.length ?? 0 }}</template>
         <template #cell-cooldown="{ row }">
-          <span :class="{ 'backoff-active': isCooldownActive(row) }">
-            {{ isCooldownActive(row) ? new Date(row['cooldown-until']).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '—' }}
+          <span v-if="isCooldownActive(row)" class="badge badge-neutral" :title="`Cooling down until ${new Date(row['cooldown-until']).toLocaleString()}`">
+            {{ new Date(row['cooldown-until']).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) }}
           </span>
+          <span v-else class="na">—</span>
         </template>
         <template #cell-next="{ row }">
-          {{ row['next-occurence'] ? new Date(row['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}
+          <template v-if="row['next-occurence']">{{ new Date(row['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
+          <span v-else class="na">—</span>
         </template>
         <template #empty>
-          <div class="empty">
+          <div class="table-empty">
             <p>No rules yet.</p>
-            <p>Click <strong>+ New rule</strong> to create one.</p>
+            <p>Click <strong>New rule</strong> to create one.</p>
           </div>
         </template>
       </TableShell>
@@ -140,49 +147,3 @@ function onRuleDeleted() {
     </div>
   </div>
 </template>
-
-<style scoped>
-.rule-view {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.split-content {
-  flex: 1 1 0;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-}
-.pane-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: 1rem;
-  flex-shrink: 0;
-}
-.pane-header h1 {
-  margin-bottom: 0.5rem;
-}
-.btn-create {
-  padding: 0.4rem 1rem;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.btn-create:hover { background: #369870; }
-.error { color: red; padding: 0.5rem; }
-.backoff-active { color: #e65100; font-weight: 500; }
-.empty {
-  padding: 2rem 1rem;
-  color: #999;
-  font-style: italic;
-  text-align: center;
-}
-.empty p { margin: 0.25rem 0; }
-</style>

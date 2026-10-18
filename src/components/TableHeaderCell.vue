@@ -676,15 +676,16 @@ function startResize(event) {
      right, with :last-child dropping it) so a header with empty
      trailing space past the last real column doesn't end in a
      dangling divider. */
-  border-left: 1px solid rgba(0, 0, 0, 0.08);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 1px solid color-mix(in srgb, var(--ink) 4%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--ink) 4%, transparent);
   margin-left: -1px; /* collapse the shared edge between adjacent cells */
 }
 .header-cell.clickable {
   cursor: pointer;
 }
 .header-cell.clickable:hover {
-  background: rgba(0, 0, 0, 0.04);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
 }
 .header-label {
   flex: 1 1 auto;
@@ -704,7 +705,7 @@ function startResize(event) {
 }
 .sort-indicator {
   font-size: 0.65rem;
-  color: #1890ff;
+  color: var(--green-ink);
   flex-shrink: 0;
 }
 .filter-dot {
@@ -712,7 +713,8 @@ function startResize(event) {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #1890ff;
+  background: var(--green);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent);
 }
 .config-icon {
   /* An explicit min-width (rather than relying on the "☰" glyph's own
@@ -724,8 +726,8 @@ function startResize(event) {
   text-align: center;
   font-size: 0.7rem;
   line-height: 1;
-  color: #666;
-  opacity: 0.45;
+  color: var(--muted);
+  opacity: 0.6;
 }
 .header-cell.clickable:hover .config-icon {
   opacity: 0.85;
@@ -737,7 +739,7 @@ function startResize(event) {
    itself (.resize-handle) is the full-height invisible drag hit area;
    .resize-grip inside it is the small visible pill the "⋮" glyph sits
    centered in - a slightly greyed box at rest, so it's apparent at a
-   glance that the divider is draggable, turning solid blue on hover. */
+   glance that the divider is draggable, turning green on hover. */
 .resize-handle {
   position: absolute;
   top: 0;
@@ -761,21 +763,23 @@ function startResize(event) {
   border-radius: 3px;
   font-size: 0.75rem;
   line-height: 1;
-  color: #999;
-  background: rgba(0, 0, 0, 0.06);
+  color: var(--faint);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  transition: background 0.2s, color 0.2s;
 }
 .resize-handle:hover .resize-grip {
-  color: #fff;
-  background: #1890ff;
+  color: var(--surface);
+  background: var(--green);
 }
 
 .header-popover {
   z-index: 2000;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-  padding: 0.75rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow-ink) 30%, transparent);
+  padding: 0.9rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -788,17 +792,17 @@ function startResize(event) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: #999;
+  letter-spacing: 0.12em;
+  color: var(--faint);
   margin: 0.1rem 0;
 }
 .popover-section-title.with-divider {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .radio-row {
   display: flex;
@@ -807,17 +811,29 @@ function startResize(event) {
   font-size: 0.85rem;
   cursor: pointer;
 }
+.radio-row input {
+  accent-color: var(--green);
+}
 .field-label {
   font-size: 0.75rem;
-  color: #666;
-  font-weight: 500;
+  color: var(--muted);
+  font-weight: 600;
 }
 .filter-input {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--text);
   font-size: 0.9rem;
   font-family: inherit;
+  outline: none;
+  color-scheme: var(--scheme);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.filter-input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent);
 }
 .toggle-group {
   display: flex;
@@ -826,28 +842,30 @@ function startResize(event) {
 }
 .toggle-btn {
   flex: 1 1 0;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fafafa;
-  color: #333;
-  font-size: 0.85rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  color: var(--muted);
+  font-size: 0.82rem;
   font-family: inherit;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .toggle-btn:hover:not(:disabled) {
-  background: #f0f0f0;
+  color: var(--text);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .toggle-btn:disabled {
-  color: #bbb;
-  background: #f5f5f5;
-  border-color: #eee;
+  opacity: 0.4;
   cursor: default;
 }
 .toggle-btn.active {
-  background: #1890ff;
-  border-color: #1890ff;
-  color: white;
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  border-color: color-mix(in srgb, var(--green) 55%, transparent);
+  color: var(--green-ink);
+  font-weight: 600;
 }
 .value-field {
   position: relative;
@@ -869,15 +887,16 @@ function startResize(event) {
   line-height: 1;
   font-size: 0.75rem;
   font-weight: bold;
-  color: #d4380d;
+  color: var(--danger-ink);
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: 999px;
 }
 .clear-x:hover:not(:disabled) {
-  background: rgba(212, 56, 13, 0.1);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 .clear-x:disabled {
-  color: #ccc;
+  color: var(--faint);
+  opacity: 0.5;
   cursor: default;
 }
 
@@ -893,24 +912,27 @@ function startResize(event) {
   flex-shrink: 0;
 }
 .status-symbol.idle {
-  color: #aaa;
-  background: #f0f0f0;
+  color: var(--faint);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
 }
 .status-symbol.pending {
-  color: #b8860b;
-  background: #fff6db;
+  color: var(--warm-ink);
+  background: color-mix(in srgb, var(--warm) 15%, transparent);
 }
 .status-symbol.applying {
-  color: #1890ff;
-  background: #e6f4ff;
+  color: var(--green-ink);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
   animation: status-spin 0.8s linear infinite;
 }
 .status-symbol.applied {
-  color: #fff;
-  background: #52c41a;
+  color: var(--surface);
+  background: var(--green);
 }
 @keyframes status-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-symbol.applying { animation: none; }
 }
 </style>

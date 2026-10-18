@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import TableShell from './components/TableShell.vue'
 import DetailOverlay from './components/DetailOverlay.vue'
+import AiControlTabs from './components/AiControlTabs.vue'
 import { useTableList } from './composables/useTableList.js'
 
 const router = useRouter()
@@ -113,9 +114,15 @@ async function forgetConversation(conversation, event) {
 </script>
 
 <template>
-  <div class="ai-control-table">
-    <h1>AI Control</h1>
-    <div v-if="error">Error: {{ error.message }}</div>
+  <div class="list-page">
+    <div class="list-head">
+      <div>
+        <h1 class="list-title">AI Control</h1>
+        <p class="list-lede">Ask an assistant to look at and act on your home.</p>
+      </div>
+      <AiControlTabs />
+    </div>
+    <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
     <div class="split-content">
       <TableShell
         :columns="columns"
@@ -137,20 +144,21 @@ async function forgetConversation(conversation, event) {
         @resize="onResize"
       >
         <template #cell-status="{ row }">
-          <span class="status-badge" :class="row.status === 'AGENT_IN_PROGRESS' ? 'in-progress' : 'idle'">
-            {{ row.status === 'AGENT_IN_PROGRESS' ? 'Thinking…' : 'Waiting for you' }}
-          </span>
+          <span v-if="row.status === 'AGENT_IN_PROGRESS'" class="badge badge-warm"><span class="pulse-dot" />Thinking…</span>
+          <span v-else class="badge badge-green">Waiting for you</span>
         </template>
         <template #cell-initiative="{ row }">{{ row.initiative === 'AGENT' ? 'Agent' : 'User' }}</template>
         <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
         <template #cell-actions="{ row }">
-          <button class="menu-btn" @click="toggleMenu(row.id, $event)">⋮</button>
+          <button class="icon-btn menu-btn" title="More" aria-label="More" @click="toggleMenu(row.id, $event)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v.01M12 12v.01M12 18.5v.01" /></svg>
+          </button>
           <div v-if="openMenuId === row.id" class="menu" @click.stop>
             <button class="menu-item danger" @click="forgetConversation(row, $event)">Forget conversation</button>
           </div>
         </template>
         <template #empty>
-          <div v-if="ready" class="empty">
+          <div v-if="ready" class="table-empty">
             <p>No conversations match the current filters.</p>
           </div>
         </template>
@@ -163,68 +171,39 @@ async function forgetConversation(conversation, event) {
 </template>
 
 <style scoped>
-.ai-control-table {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.ai-control-table h1 {
-  flex-shrink: 0;
-  margin-bottom: 0.5rem;
-}
-.split-content {
-  flex: 1 1 0;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-}
-.status-badge {
-  padding: 0.15rem 0.5rem;
-  border-radius: 3px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-.status-badge.idle { background: #e8f5e9; color: #2e7d32; }
-.status-badge.in-progress { background: #fff3e0; color: #e65100; }
 .menu-btn {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 0.2rem 0.5rem;
-  color: #666;
+  width: 28px;
+  height: 28px;
 }
-.menu-btn:hover { color: #222; }
+.menu-btn svg {
+  stroke-width: 3;
+}
 .menu {
   position: absolute;
   right: 1rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow-ink) 30%, transparent);
   z-index: 10;
+  animation: ui-rise 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .menu-item {
   display: block;
   width: 100%;
-  padding: 0.5rem 1rem;
+  padding: 8px 12px;
   border: none;
+  border-radius: 9px;
   background: none;
   text-align: left;
   cursor: pointer;
-  font-size: 0.85rem;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--text);
   white-space: nowrap;
 }
-.menu-item:hover { background: #f5f5f5; }
-.menu-item.danger { color: #c62828; }
-.empty {
-  padding: 2rem 1rem;
-  color: #999;
-  font-style: italic;
-  text-align: center;
-}
+.menu-item:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.menu-item.danger { color: var(--danger-ink); }
+.menu-item.danger:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); }
 </style>

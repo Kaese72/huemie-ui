@@ -23,18 +23,30 @@ defineProps({
 </template>
 
 <style scoped>
+/* DESIGN.md, section 5: a surface pane sliding in from the right. */
 .detail-overlay {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   max-width: 100%;
-  background: #fff;
-  border-left: 1px solid #ddd;
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-right: none;
+  border-radius: 20px 0 0 20px;
+  box-shadow: -12px 0 40px color-mix(in srgb, var(--shadow-ink) 30%, transparent);
   overflow-y: auto;
-  padding-left: 2rem;
+  padding: 24px 28px 32px;
   box-sizing: border-box;
   z-index: 10;
+  animation: overlay-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes overlay-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .detail-overlay { animation: none; }
 }
 </style>

@@ -105,12 +105,17 @@ const selectedId = computed(() => route.params.id)
 </script>
 
 <template>
-  <div class="adapter-table">
-    <div class="title-row">
-      <h1>Adapters</h1>
-      <button class="create-button" @click="openCreateDialog">Create</button>
+  <div class="list-page">
+    <div class="list-head">
+      <div>
+        <h1 class="list-title">Adapters</h1>
+        <p class="list-lede">The bridges between the Appliance and your devices.</p>
+      </div>
+      <div class="list-actions">
+        <button class="btn btn-primary" @click="openCreateDialog">New adapter</button>
+      </div>
     </div>
-    <div v-if="error">Error: {{ error.message }}</div>
+    <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
     <div class="split-content">
       <TableShell
         :columns="columns"
@@ -133,7 +138,7 @@ const selectedId = computed(() => route.params.id)
       >
         <template #cell-created="{ row }">{{ new Date(row.created).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
         <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
-        <template #cell-synced="{ row }">{{ row.synced || 'Not synced' }}</template>
+        <template #cell-synced="{ row }"><span v-if="row.synced">{{ row.synced }}</span><span v-else class="na">Not synced</span></template>
       </TableShell>
       <DetailOverlay v-if="selectedId">
         <router-view />
@@ -141,110 +146,27 @@ const selectedId = computed(() => route.params.id)
     </div>
 
     <div v-if="showCreateDialog" class="dialog-backdrop">
-      <div class="dialog">
-        <h3>Create Adapter</h3>
-        <input v-model="newAdapter.name" class="create-input create-name" type="text" placeholder="Name" />
-        <input v-model="newAdapter.imageName" class="create-input" type="text" placeholder="Image name" />
-        <input v-model="newAdapter.imageTag" class="create-input" type="text" placeholder="Image tag" />
+      <div class="dialog" role="dialog" aria-modal="true">
+        <h3 class="dialog-title">New adapter</h3>
+        <div class="field">
+          <label for="adapter-name">Name</label>
+          <input id="adapter-name" v-model="newAdapter.name" class="input" type="text" placeholder="e.g. Hue" />
+        </div>
+        <div class="field">
+          <label for="adapter-image">Image name</label>
+          <input id="adapter-image" v-model="newAdapter.imageName" class="input" type="text" placeholder="ghcr.io/…" />
+        </div>
+        <div class="field">
+          <label for="adapter-tag">Image tag</label>
+          <input id="adapter-tag" v-model="newAdapter.imageTag" class="input" type="text" placeholder="e.g. v1.2.3" />
+        </div>
         <div class="dialog-actions">
-          <button class="dialog-save-button" :disabled="creatingAdapter || !newAdapter.name || !newAdapter.imageName || !newAdapter.imageTag" @click="createAdapter">
-            {{ creatingAdapter ? 'Saving...' : 'Save' }}
+          <button class="btn btn-ghost" :disabled="creatingAdapter" @click="closeCreateDialog">Cancel</button>
+          <button class="btn btn-primary" :disabled="creatingAdapter || !newAdapter.name || !newAdapter.imageName || !newAdapter.imageTag" @click="createAdapter">
+            {{ creatingAdapter ? 'Saving…' : 'Create' }}
           </button>
-          <button class="dialog-cancel-button" :disabled="creatingAdapter" @click="closeCreateDialog">Cancel</button>
         </div>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.adapter-table {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: 1rem;
-  flex-shrink: 0;
-}
-.title-row h1 {
-  margin-bottom: 0.5rem;
-}
-.create-button {
-  padding: 0.4rem 1rem;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.create-button:hover { background: #369870; }
-.split-content {
-  flex: 1 1 0;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-}
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-}
-.dialog {
-  width: 360px;
-  max-width: calc(100vw - 2rem);
-  background: #fff;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  padding: 1rem;
-}
-.dialog h3 {
-  margin-top: 0;
-  margin-bottom: 0.8rem;
-}
-.create-input {
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-  margin-bottom: 0.6rem;
-}
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-.dialog-save-button,
-.dialog-cancel-button {
-  padding: 0.45rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.dialog-save-button {
-  border: 1px solid #2e7d32;
-  background: #2e7d32;
-  color: #fff;
-}
-.dialog-save-button:disabled,
-.dialog-cancel-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.dialog-cancel-button {
-  border: 1px solid #d0d0d0;
-  background: #f4f4f4;
-  color: #222;
-}
-</style>

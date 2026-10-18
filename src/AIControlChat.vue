@@ -126,7 +126,7 @@ function toolLabel(entry) {
   switch (entry.type) {
     case 'AGENT_DEVICE_CAPABILITY_TRIGGER_CALL': {
       const c = entry['device-capability-trigger-call']
-      return `🔧 Triggered "${c.capability}" on device ${c['device-id']}`
+      return `Triggered "${c.capability}" on device ${c['device-id']}`
     }
     case 'AGENT_DEVICE_CAPABILITY_TRIGGER_RESPONSE': {
       const r = entry['device-capability-trigger-response']
@@ -134,7 +134,7 @@ function toolLabel(entry) {
     }
     case 'AGENT_GROUP_CAPABILITY_TRIGGER_CALL': {
       const c = entry['group-capability-trigger-call']
-      return `🔧 Triggered "${c.capability}" on group ${c['group-id']}`
+      return `Triggered "${c.capability}" on group ${c['group-id']}`
     }
     case 'AGENT_GROUP_CAPABILITY_TRIGGER_RESPONSE': {
       const r = entry['group-capability-trigger-response']
@@ -178,29 +178,32 @@ function formatToolOutput(output) {
 <template>
   <div class="chat-view">
     <div class="pane-header">
-      <h1>{{ conversation?.name ?? 'Conversation' }}</h1>
+      <h2 class="detail-title chat-title">{{ conversation?.name ?? 'Conversation' }}</h2>
       <div class="header-actions">
-        <button class="forget-btn" @click="forgetConversation">Forget conversation</button>
-        <router-link :to="{ name: 'AIControl' }" class="back-link">← Back to conversations</router-link>
+        <button class="btn btn-danger btn-sm" @click="forgetConversation">Forget</button>
+        <router-link :to="{ name: 'AIControl' }" class="icon-btn" title="Back to conversations" aria-label="Back to conversations">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </router-link>
       </div>
     </div>
 
-    <div v-if="loadError" class="error">Error: {{ loadError.message }}</div>
-    <div v-else-if="loading" class="empty">Loading…</div>
+    <div v-if="loadError" class="alert alert-error">Error: {{ loadError.message }}</div>
+    <p v-else-if="loading" class="empty">Loading…</p>
 
     <template v-else>
       <div class="messages" ref="messagesRef">
         <template v-for="entry in entries" :key="entry.id">
           <div v-if="entry.type === 'USER_INPUT'" class="bubble user">{{ entry['user-input'].text }}</div>
           <div v-else-if="entry.type === 'AGENT_MESSAGE'" class="bubble agent">{{ entry['agent-message'].text }}</div>
-          <div v-else-if="entry.type === 'AGENT_ERROR'" class="bubble agent-error">⚠ {{ entry['agent-error'].message }}</div>
-          <div v-else-if="entry.type === 'USER_STOP'" class="system-note">Conversation stopped.</div>
+          <div v-else-if="entry.type === 'AGENT_ERROR'" class="alert alert-error agent-error">{{ entry['agent-error'].message }}</div>
+          <div v-else-if="entry.type === 'USER_STOP'" class="system-note">Conversation stopped</div>
           <div v-else-if="entry.type === 'AGENT_GENERIC_TOOL_CALL'" class="tool-note tool-call-row">
             <button
               class="expand-toggle"
               @click="toggleGenericToolResult(entry['generic-tool-call']['tool-use-id'])"
             >
-              🔧 Called {{ entry['generic-tool-call']['tool-name'] }}
+              <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></svg>
+              Called {{ entry['generic-tool-call']['tool-name'] }}
               <span
                 class="expand-arrow"
                 :class="{ open: expandedGenericToolResults.has(entry['generic-tool-call']['tool-use-id']) }"
@@ -214,28 +217,35 @@ function formatToolOutput(output) {
           >
             <pre>{{ formatToolOutput(entry['generic-tool-response'].output) }}</pre>
           </div>
-          <div v-else-if="isToolEntry(entry.type)" class="tool-note">{{ toolLabel(entry) }}</div>
+          <div v-else-if="isToolEntry(entry.type)" class="tool-note">
+            <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></svg>
+            {{ toolLabel(entry) }}
+          </div>
         </template>
-        <div v-if="inProgress" class="bubble agent thinking">Thinking…</div>
+        <div v-if="inProgress" class="bubble agent thinking" aria-label="Thinking">
+          <span /><span /><span />
+        </div>
       </div>
 
       <div class="composer">
         <textarea
           v-model="query"
           rows="2"
-          placeholder="Message the chatbot…"
+          class="input"
+          placeholder="Message the assistant…"
           :disabled="!canSend"
           @keydown.enter.exact.prevent="sendInput"
         ></textarea>
-        <button v-if="inProgress" class="stop-btn" @click="stopConversation">Stop</button>
-        <button v-else class="send-btn" :disabled="!canSend" @click="sendInput">Send</button>
+        <button v-if="inProgress" class="btn btn-danger" @click="stopConversation">Stop</button>
+        <button v-else class="btn btn-primary" :disabled="!canSend" @click="sendInput">Send</button>
       </div>
-      <div v-if="sendError" class="error-msg">{{ sendError.response?.data?.detail || sendError.message }}</div>
+      <div v-if="sendError" class="alert alert-error">{{ sendError.response?.data?.detail || sendError.message }}</div>
     </template>
   </div>
 </template>
 
 <style scoped>
+/* DESIGN.md (this repo), section 8 "AI Control". */
 .chat-view {
   width: 100%;
   height: 100%;
@@ -248,30 +258,22 @@ function formatToolOutput(output) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-right: 1rem;
+  gap: 12px;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
-.pane-header h1 {
-  margin-bottom: 0.5rem;
+.chat-title {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.header-actions { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
-.back-link { color: #666; text-decoration: none; font-size: 0.9rem; flex-shrink: 0; }
-.back-link:hover { color: #42b983; }
-.forget-btn {
-  padding: 0.3rem 0.75rem;
-  background: #fff;
-  color: #e53935;
-  border: 1px solid #e53935;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
-.forget-btn:hover { background: #ffebee; }
-.error { color: red; padding: 0.5rem; }
-.empty { padding: 2rem 1rem; color: #999; font-style: italic; text-align: center; }
 
 .messages {
   flex: 1 1 0;
@@ -279,132 +281,144 @@ function formatToolOutput(output) {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem 0.25rem;
+  gap: 12px;
+  padding: 8px 2px;
 }
 .bubble {
-  max-width: 70%;
-  padding: 0.6rem 0.9rem;
-  border-radius: 12px;
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 20px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
+/* You are at home: your messages carry the warm tint. */
 .bubble.user {
   align-self: flex-end;
-  background: #42b983;
-  color: #fff;
-  border-bottom-right-radius: 2px;
+  background: color-mix(in srgb, var(--warm) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warm) 25%, transparent);
+  color: var(--text);
+  border-bottom-right-radius: 6px;
 }
 .bubble.agent {
   align-self: flex-start;
-  background: #f0f0f0;
-  color: #222;
-  border-bottom-left-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 4%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--text);
+  border-bottom-left-radius: 6px;
 }
-.bubble.agent.thinking { color: #999; font-style: italic; }
-.bubble.agent-error {
+.bubble.agent.thinking {
+  display: inline-flex;
+  gap: 5px;
+  padding: 14px 16px;
+}
+.thinking span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: chat-breathe 1.2s ease-in-out infinite;
+}
+.thinking span:nth-child(2) { animation-delay: 0.15s; }
+.thinking span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chat-breathe {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-2px); }
+}
+.agent-error {
   align-self: flex-start;
-  background: #fdecea;
-  color: #721c24;
-  border-bottom-left-radius: 2px;
+  max-width: 78%;
+  margin: 0;
 }
-.system-note, .tool-note {
+.system-note {
   align-self: center;
-  font-size: 0.8rem;
-  color: #999;
-  font-style: italic;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
-.tool-note { align-self: flex-start; margin-left: 0.5rem; }
+.tool-note {
+  align-self: flex-start;
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--faint);
+}
+.tool-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
 .tool-call-row { padding: 0; }
 .expand-toggle {
   background: none;
   border: none;
   color: inherit;
   font: inherit;
-  font-style: italic;
   cursor: pointer;
   padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 6px;
+  transition: color 0.15s;
 }
-.expand-toggle:hover { color: #42b983; }
+.expand-toggle:hover { color: var(--text); }
 .expand-arrow {
   display: inline-block;
-  font-style: normal;
-  font-size: 1.1rem;
-  font-weight: bold;
+  font-size: 1rem;
   line-height: 1;
-  color: #666;
   transform: rotate(-90deg);
-  transition: transform 0.15s ease, color 0.15s ease;
+  transition: transform 0.15s ease;
 }
-.expand-toggle:hover .expand-arrow { color: #42b983; }
 .expand-arrow.open { transform: rotate(0deg); }
 .tool-result-box {
   align-self: flex-start;
-  margin-left: 0.5rem;
+  margin-left: 6px;
   max-width: 90%;
-  background: #f7f7f7;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 12px;
+  padding: 8px 12px;
 }
 .tool-result-box.error {
-  background: #fdecea;
-  border-color: #f5c6cb;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 25%, transparent);
 }
 .tool-result-box pre {
   margin: 0;
   font-size: 0.8rem;
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #444;
+  font-family: ui-monospace, 'Cascadia Code', SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--muted);
 }
-.tool-result-box.error pre { color: #721c24; }
+.tool-result-box.error pre { color: var(--danger-ink); }
 
 .composer {
   flex-shrink: 0;
   display: flex;
-  gap: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #eee;
+  align-items: flex-end;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .composer textarea {
   flex: 1;
   resize: none;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  font-family: inherit;
-  outline: none;
+  border-radius: 20px;
+  padding: 10px 16px;
+  line-height: 1.45;
 }
-.composer textarea:focus { border-color: #42b983; }
-.composer textarea:disabled { background: #f5f5f5; }
-.send-btn, .stop-btn {
-  align-self: flex-end;
-  border: none;
-  border-radius: 5px;
-  padding: 0.6rem 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: #fff;
-}
-.send-btn { background: #42b983; }
-.send-btn:hover:not(:disabled) { background: #369b6f; }
-.send-btn:disabled { opacity: 0.65; cursor: default; }
-.stop-btn { background: #e65100; }
-.stop-btn:hover { background: #c74600; }
-.error-msg {
-  background: #fdecea;
-  border: 1px solid #f5c6cb;
-  border-radius: 5px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  color: #721c24;
-  margin-top: 0.5rem;
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking span { animation: none; opacity: 0.6; }
 }
 </style>

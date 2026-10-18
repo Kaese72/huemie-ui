@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-const title = ref('Huemie')
+const title = ref('Humi')
 
 export function useMobileTitle() {
   return { title }

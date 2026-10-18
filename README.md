@@ -2,6 +2,10 @@
 
 This UI is intended to be used with the Huemie system to visualize and act on devices in your home
 
+## Design
+
+Styling follows [DESIGN.md](DESIGN.md), which builds on the shared Humi guide in [`cloud-ui/DESIGN.md`](../cloud-ui/DESIGN.md).
+
 ## Development
 
 A few things are required to make development easy.

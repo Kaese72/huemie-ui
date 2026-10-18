@@ -4,6 +4,7 @@ import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRoute } from 'vue-router'
 import { useAuth } from './composables/useAuth.js'
+import BoolBadge from './components/BoolBadge.vue'
 
 const emit = defineEmits(['updated'])
 const { cloudLoginAvailable, currentUserId } = useAuth()
@@ -105,176 +106,79 @@ async function linkCloud() {
 </script>
 
 <template>
-  <div v-if="error">Error: {{ error.message }}</div>
+  <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
   <div v-else-if="user">
-    <h2>User Details: {{ user.username }}</h2>
-    <div class="user-info">
-      <div class="info-section">
-        <h3>General Information</h3>
-        <ul>
-          <li><strong>ID:</strong> {{ user.id }}</li>
-          <li><strong>Username:</strong> {{ user.username }}</li>
-          <li>
-            <strong>Local login:</strong>
-            <span :class="user.localLogin ? 'flag-yes' : 'flag-no'">{{ user.localLogin ? 'Yes (has a password)' : 'No' }}</span>
-          </li>
-          <li>
-            <strong>Cloud login:</strong>
-            <span :class="user.cloudLogin ? 'flag-yes' : 'flag-no'">{{ user.cloudLogin ? 'Yes (linked to Humi Cloud)' : 'No' }}</span>
-            <button
-              v-if="!user.cloudLogin && cloudAvailable && user.id === currentUserId"
-              class="link-cloud-button"
-              :disabled="linkingCloud"
-              @click="linkCloud"
-            >
-              {{ linkingCloud ? 'Redirecting…' : 'Link Cloud' }}
-            </button>
-          </li>
-          <li v-if="linkError" class="save-error">{{ linkError }}</li>
-        </ul>
-      </div>
+    <div class="detail-head">
+      <h2 class="detail-title">
+        {{ user.username }}
+        <span v-if="user.id === currentUserId" class="badge badge-warm">You</span>
+      </h2>
+    </div>
+    <div class="detail-meta">
+      <span><strong>ID</strong> <span class="mono">{{ user.id }}</span></span>
+    </div>
 
-      <div class="info-section">
-        <h3>Profile</h3>
-        <div class="form-row">
-          <label>Name</label>
-          <input v-model="form.name" type="text" class="form-input" :disabled="saving" />
-        </div>
-        <div class="form-row">
-          <label>Surname</label>
-          <input v-model="form.surname" type="text" class="form-input" :disabled="saving" />
-        </div>
-        <div class="form-row">
-          <label>Email</label>
-          <input v-model="form.email" type="email" class="form-input" :disabled="saving" />
-        </div>
-        <div v-if="saveError" class="save-error">{{ saveError }}</div>
-        <div class="form-actions">
-          <button class="save-button" :disabled="saving || !isDirty()" @click="saveUser">
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
-          <button class="cancel-button" :disabled="saving || !isDirty()" @click="resetForm">Reset</button>
-        </div>
+    <h3 class="section-title">Sign-in</h3>
+    <dl class="kv">
+      <dt>Username</dt>
+      <dd>{{ user.username }}</dd>
+      <dt>Local login</dt>
+      <dd>
+        <BoolBadge :value="!!user.localLogin" />
+        <span :class="user.localLogin ? '' : 'na'">{{ user.localLogin ? 'Yes, has a password' : 'No' }}</span>
+      </dd>
+      <dt>Humi Cloud</dt>
+      <dd>
+        <span v-if="user.cloudLogin" class="badge badge-cloud">Linked</span>
+        <span v-else class="na">Not linked</span>
+        <button
+          v-if="!user.cloudLogin && cloudAvailable && user.id === currentUserId"
+          class="btn btn-cloud btn-sm"
+          :disabled="linkingCloud"
+          @click="linkCloud"
+        >
+          {{ linkingCloud ? 'Redirecting…' : 'Link Humi Cloud' }}
+        </button>
+      </dd>
+    </dl>
+    <div v-if="linkError" class="alert alert-error">{{ linkError }}</div>
+
+    <h3 class="section-title">Profile</h3>
+    <div class="name-pair">
+      <div class="field">
+        <label for="user-name">Name</label>
+        <input id="user-name" v-model="form.name" type="text" class="input" :disabled="saving" />
+      </div>
+      <div class="field">
+        <label for="user-surname">Surname</label>
+        <input id="user-surname" v-model="form.surname" type="text" class="input" :disabled="saving" />
       </div>
     </div>
+    <div class="field email-field">
+      <label for="user-email">Email</label>
+      <input id="user-email" v-model="form.email" type="email" class="input" :disabled="saving" />
+    </div>
+    <div v-if="saveError" class="alert alert-error">{{ saveError }}</div>
+    <div class="form-actions">
+      <button class="btn btn-primary" :disabled="saving || !isDirty()" @click="saveUser">
+        {{ saving ? 'Saving…' : 'Save' }}
+      </button>
+      <button class="btn btn-ghost" :disabled="saving || !isDirty()" @click="resetForm">Reset</button>
+    </div>
   </div>
-  <div v-else>Loading...</div>
+  <p v-else class="empty">Loading…</p>
 </template>
 
 <style scoped>
-.user-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.name-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
-
-.info-section {
-  background: #f9f9f9;
-  padding: 1rem;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
-}
-
-.info-section h3 {
+.name-pair .field + .field {
   margin-top: 0;
-  margin-bottom: 1rem;
-  color: #333;
-  font-size: 1.1rem;
 }
-
-ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-li {
-  margin-bottom: 0.5rem;
-  padding: 0.25rem 0;
-}
-
-strong {
-  color: #555;
-  margin-right: 0.5rem;
-}
-
-.flag-yes { color: #2e7d32; font-weight: 500; }
-.flag-no  { color: #999; }
-
-.link-cloud-button {
-  margin-left: 0.75rem;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid #1565c0;
-  border-radius: 4px;
-  background: #fff;
-  color: #1565c0;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.link-cloud-button:hover:not(:disabled) { background: #e6f0fa; }
-.link-cloud-button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.form-row {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 0.75rem;
-}
-
-.form-row label {
-  font-size: 0.85rem;
-  color: #555;
-  margin-bottom: 0.3rem;
-}
-
-.form-input {
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 0.95rem;
-  box-sizing: border-box;
-}
-
-.form-input:disabled { background: #f0f0f0; }
-
-.save-error {
-  color: #c62828;
-  font-size: 0.85rem;
-  margin-bottom: 0.6rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.save-button {
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  background: #2d8cff;
-  color: #fff;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.save-button:disabled {
-  background: #9bbcf2;
-  cursor: not-allowed;
-}
-
-.cancel-button {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
-  background: #f4f4f4;
-  color: #222;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.cancel-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.email-field {
+  margin-top: 14px;
 }
 </style>

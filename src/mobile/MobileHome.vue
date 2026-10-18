@@ -3,46 +3,77 @@ import { onMounted } from 'vue'
 import { useMobileTitle } from '../composables/useMobileTitle.js'
 
 const { title } = useMobileTitle()
-onMounted(() => { title.value = 'Huemie' })
+onMounted(() => { title.value = 'Humi' })
 </script>
 
 <template>
-  <button class="category-card" @click="$router.push({ name: 'MobileGroups' })">
-    <span class="category-icon">👥</span>
-    <span class="category-label">Groups</span>
-  </button>
-  <button class="category-card" @click="$router.push({ name: 'MobileDevices' })">
-    <span class="category-icon">💡</span>
-    <span class="category-label">Devices</span>
-  </button>
+  <h2 class="m-greeting">Welcome home.</h2>
+  <div class="m-categories">
+    <button class="panel m-category" @click="$router.push({ name: 'MobileGroups' })">
+      <span class="m-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20H4zM10 20v-5h4v5" /></svg>
+      </span>
+      <span class="m-category-label">Groups</span>
+    </button>
+    <button class="panel m-category" @click="$router.push({ name: 'MobileDevices' })">
+      <span class="m-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z" /></svg>
+      </span>
+      <span class="m-category-label">Devices</span>
+    </button>
+  </div>
 </template>
 
 <style scoped>
-.category-card {
+.m-greeting {
+  margin: 8px 0 4px;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.m-categories {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.m-category {
+  margin: 0;
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  padding: 1.75rem 1.5rem;
-  background: #fff;
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: border-color 0.2s, transform 0.2s;
 }
-
-.category-card:active {
-  background: #e6f7ff;
+.m-category:active {
+  transform: scale(0.98);
+  border-color: color-mix(in srgb, var(--warm) 50%, transparent);
 }
-
-.category-icon {
-  font-size: 2rem;
+.m-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
 }
-
-.category-label {
-  font-size: 1.4rem;
+.m-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: var(--icon);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-category-label {
+  font-size: 1.15rem;
   font-weight: 700;
-  color: #222e3a;
+  letter-spacing: -0.02em;
 }
 </style>

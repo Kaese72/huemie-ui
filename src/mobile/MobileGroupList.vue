@@ -19,49 +19,74 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="error" class="error">Error: {{ error.message }}</div>
-  <div v-else-if="groups.length === 0" class="empty">No groups found.</div>
+  <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
+  <p v-else-if="groups.length === 0" class="empty m-empty">No groups found.</p>
   <button
     v-for="group in groups"
     :key="group.id"
-    class="item-card"
+    class="m-item"
     @click="$router.push({ name: 'MobileGroupDetail', params: { id: group.id } })"
   >
-    <span class="item-name">{{ group.name }}</span>
-    <span class="item-sub">{{ group.capabilities.length }} capabilities</span>
+    <span class="m-item-main">
+      <span class="item-name">{{ group.name }}</span>
+      <span class="item-sub">{{ group.capabilities.length }} capabilities</span>
+    </span>
+    <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
   </button>
 </template>
 
 <style scoped>
-.item-card {
+.m-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ink) 4%, transparent),
+    color-mix(in srgb, var(--ink) 1.5%, transparent));
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.m-item:active {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.m-item-main {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
-  padding: 1.25rem 1.5rem;
-  background: #fff;
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s;
 }
-
-.item-card:active { background: #e6f7ff; }
-
 .item-name {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  color: #222e3a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
 .item-sub {
-  font-size: 0.875rem;
-  color: #888;
-  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 2px;
 }
-
-.empty { color: #888; text-align: center; margin-top: 2rem; }
-.error { color: #c0392b; }
+.chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-empty {
+  text-align: center;
+  margin-top: 32px;
+}
 </style>

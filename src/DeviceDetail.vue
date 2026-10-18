@@ -4,6 +4,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import CapabilityDialog from './components/CapabilityDialog.vue'
+import AttributeValue from './components/AttributeValue.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -136,40 +137,44 @@ async function forgetDevice() {
 </script>
 
 <template>
-  <div v-if="error">Error: {{ error.message }}</div>
+  <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
   <div v-else-if="device">
-    <h2 class="device-name-heading">
-      <template v-if="!editingName">
-        [{{ device.id }}] {{ device.name || '(unnamed)' }}
-        <button class="icon-button" title="Edit name" @click="startEditingName">&#9998;</button>
-      </template>
-      <template v-else>
-        [{{ device.id }}]
-        <input
-          v-model="nameDraft"
-          class="name-input"
-          maxlength="255"
-          :disabled="savingName"
-          @keyup.enter="saveName(nameDraft)"
-          @keyup.esc="cancelEditingName"
-        >
-        <button class="icon-button" :disabled="savingName" @click="saveName(nameDraft)">Save</button>
-        <button class="icon-button" :disabled="savingName" @click="cancelEditingName">Cancel</button>
-      </template>
-    </h2>
-    <div class="device-meta">
-      <strong>Bridge identifier:</strong> {{ device['bridge-identifier'] }}<br>
-      <strong>Last updated:</strong> {{ device.updated || 'Unknown' }}
+    <div class="detail-head">
+      <h2 class="detail-title">
+        <template v-if="!editingName">
+          {{ device.name || '(unnamed)' }}
+          <button class="icon-btn edit-name" title="Edit name" aria-label="Edit name" @click="startEditingName">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" /></svg>
+          </button>
+        </template>
+        <template v-else>
+          <input
+            v-model="nameDraft"
+            class="input input-sm name-input"
+            maxlength="255"
+            :disabled="savingName"
+            @keyup.enter="saveName(nameDraft)"
+            @keyup.esc="cancelEditingName"
+          >
+          <button class="btn btn-primary btn-sm" :disabled="savingName" @click="saveName(nameDraft)">Save</button>
+          <button class="btn btn-ghost btn-sm" :disabled="savingName" @click="cancelEditingName">Cancel</button>
+        </template>
+      </h2>
+    </div>
+    <div class="detail-meta">
+      <span><strong>ID</strong> <span class="mono">{{ device.id }}</span></span>
+      <span><strong>Bridge identifier</strong> <span class="mono">{{ device['bridge-identifier'] }}</span></span>
+      <span><strong>Last updated</strong> {{ device.updated || 'Unknown' }}</span>
     </div>
 
     <div class="tabs">
       <button class="tab" :class="{ active: activeTab === 'state' }" @click="selectTab('state')">State</button>
-      <button class="tab" :class="{ active: activeTab === 'history' }" @click="selectTab('history')">Trigger History</button>
+      <button class="tab" :class="{ active: activeTab === 'history' }" @click="selectTab('history')">Trigger history</button>
     </div>
 
     <div v-if="activeTab === 'state'">
       <div v-if="device.attributes && device.attributes.length">
-        <h3>Attributes</h3>
+        <h3 class="section-title">Attributes</h3>
         <table class="data-table">
           <thead>
             <tr>
@@ -182,12 +187,17 @@ async function forgetDevice() {
           <tbody>
             <tr v-for="attribute in device.attributes" :key="attribute.name">
               <td>{{ attribute.name }}</td>
-              <td>{{ extractAttributeValue(attribute) }}</td>
-              <td>{{ attribute.updated || 'Unknown' }}</td>
               <td>
+                <span class="value">
+                  <span v-if="attribute['boolean-state'] === true" class="lit-dot" />
+                  <AttributeValue :value="extractAttributeValue(attribute)" />
+                </span>
+              </td>
+              <td class="muted">{{ attribute.updated || 'Unknown' }}</td>
+              <td class="actions">
                 <button
                   v-if="attribute['string-state']"
-                  class="icon-button"
+                  class="btn btn-ghost btn-sm"
                   :disabled="savingName"
                   @click="setAttributeAsName(attribute)"
                 >
@@ -200,32 +210,24 @@ async function forgetDevice() {
       </div>
 
       <div v-if="device.capabilities && device.capabilities.length">
-        <h3>Capabilities</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Updated</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="cap in device.capabilities" :key="cap.name">
-              <td>{{ cap.name }}</td>
-              <td>{{ cap.updated || 'Unknown' }}</td>
-              <td>
-                <button class="trigger-button" @click="openCapabilityDialog(cap)">
-                  Trigger {{ cap.name }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <h3 class="section-title">Capabilities</h3>
+        <div class="capabilities">
+          <button
+            v-for="cap in device.capabilities"
+            :key="cap.name"
+            class="btn btn-ghost btn-sm capability"
+            :title="`Updated ${cap.updated || 'Unknown'}`"
+            @click="openCapabilityDialog(cap)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            {{ cap.name }}
+          </button>
+        </div>
       </div>
     </div>
 
     <div v-if="activeTab === 'history'">
-      <div v-if="!triggerAudits.length" class="empty-state">No capability triggers recorded yet.</div>
+      <p v-if="!triggerAudits.length" class="empty">No capability triggers recorded yet.</p>
       <table v-else class="data-table">
         <thead>
           <tr>
@@ -239,19 +241,19 @@ async function forgetDevice() {
         <tbody>
           <tr v-for="audit in triggerAudits" :key="audit.id">
             <td>{{ audit.name }}</td>
-            <td>{{ audit.timestamp }}</td>
-            <td :class="audit.success ? 'audit-success' : 'audit-failure'">
+            <td class="muted">{{ audit.timestamp }}</td>
+            <td :class="audit.success ? 'text-ok' : 'text-fail'">
               {{ audit.success ? 'Success' : 'Failed' }}
             </td>
             <td><code>{{ audit.arguments }}</code></td>
-            <td>{{ audit['error-message'] || '' }}</td>
+            <td class="text-fail-plain">{{ audit['error-message'] || '' }}</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="forget-section">
-      <button class="forget-button" @click="forgetDevice">Forget device</button>
+    <div class="detail-footer">
+      <button class="btn btn-danger btn-sm" @click="forgetDevice">Forget device</button>
     </div>
 
     <CapabilityDialog
@@ -262,112 +264,32 @@ async function forgetDevice() {
       @trigger="triggerCapability"
     />
   </div>
-  <div v-else>Loading...</div>
+  <p v-else class="empty">Loading…</p>
 </template>
 
 <style scoped>
-.device-meta {
-  margin-bottom: 1rem;
-}
-.device-name-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.icon-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
+.edit-name {
   opacity: 0;
   transition: opacity 0.15s;
-  padding: 0.15rem 0.4rem;
 }
-.device-name-heading:hover .icon-button,
-.device-name-heading .icon-button:focus {
+.detail-title:hover .edit-name,
+.edit-name:focus-visible {
   opacity: 1;
-}
-.data-table .icon-button {
-  opacity: 1;
-  border: 1px solid #ddd;
-  border-radius: 4px;
 }
 .name-input {
+  flex: 1;
+  min-width: 160px;
   font-size: 1rem;
-  padding: 0.15rem 0.4rem;
 }
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-  border-bottom: 2px solid #ddd;
+.value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
-.tab {
-  padding: 0.5rem 1rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 1rem;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+.muted {
+  color: var(--muted);
 }
-.tab.active {
-  border-bottom-color: #42b983;
-  color: #42b983;
-  font-weight: bold;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
-}
-.data-table th,
-.data-table td {
-  border: 1px solid #ddd;
-  padding: 0.5rem;
-  text-align: left;
-}
-.data-table th {
-  background: #f5f5f5;
-}
-.trigger-button {
-  padding: 0.5rem 1rem;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.trigger-button:hover {
-  background: #369870;
-}
-.forget-section {
-  margin-top: 1rem;
-}
-.forget-button {
-  padding: 0.5rem 1rem;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.forget-button:hover {
-  background: #369870;
-}
-.audit-success {
-  color: #2a9d5c;
-  font-weight: bold;
-}
-.audit-failure {
-  color: #c0392b;
-  font-weight: bold;
-}
-.empty-state {
-  color: #888;
-  font-style: italic;
-  margin-bottom: 1rem;
+.text-fail-plain {
+  color: var(--danger-ink);
 }
 </style>

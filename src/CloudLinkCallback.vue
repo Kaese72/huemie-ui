@@ -49,30 +49,14 @@ onMounted(async () => {
 
 <template>
   <div class="callback-page">
-    <div v-if="error" class="error">
-      <h1>Linking cloud account failed</h1>
-      <p>{{ error }}</p>
-      <router-link :to="{ name: 'Users' }">Back to users</router-link>
+    <div v-if="error" class="status-card">
+      <h1 class="status-title">Linking Humi Cloud failed.</h1>
+      <div class="alert alert-error">{{ error }}</div>
+      <router-link :to="{ name: 'Users' }" class="btn btn-ghost">Back to users</router-link>
     </div>
-    <div v-else class="pending">
-      <p>Linking cloud account…</p>
+    <div v-else class="status-card">
+      <span class="spinner" aria-hidden="true" />
+      <p class="status-text">Linking your Humi Cloud account…</p>
     </div>
   </div>
 </template>
-
-<style scoped>
-.callback-page {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-.error {
-  color: #c62828;
-  max-width: 420px;
-}
-.pending {
-  color: #555;
-}
-</style>

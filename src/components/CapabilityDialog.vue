@@ -60,283 +60,172 @@ function getArgumentType(spec) {
 </script>
 
 <template>
-  <div v-if="show" class="dialog-overlay" @click.self="close">
-    <div class="dialog-content">
-      <div class="dialog-header">
-        <h3>Trigger {{ capability.name }}</h3>
-        <button class="close-btn" @click="close">&times;</button>
-      </div>
-      
-      <div class="dialog-body">
-        <div v-if="!hasArguments" class="no-arguments">
-          <p>This capability has no arguments.</p>
+  <!-- Teleported so the backdrop covers the whole app, top bar included,
+       even when opened from inside a detail pane. -->
+  <Teleport to="body">
+    <div v-if="show" class="dialog-backdrop" @click.self="close">
+      <div class="dialog capability-dialog" role="dialog" aria-modal="true">
+        <div class="dialog-head">
+          <h3 class="dialog-title">{{ capability.name }}</h3>
+          <button class="icon-btn" title="Close" aria-label="Close" @click="close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
         </div>
-        
-        <div v-else class="arguments-form">
-          <div 
-            v-for="spec in capability['argument-specs']" 
-            :key="spec.name" 
-            class="argument-field"
-          >
-            <label :for="'arg-' + spec.name">
-              {{ spec.name }}
-              <span v-if="getArgumentType(spec) === 'numeric' && spec.numeric" class="hint">
-                ({{ spec.numeric.min }} - {{ spec.numeric.max }})
-              </span>
-              <span v-if="getArgumentType(spec) === 'text' && spec.text && (spec.text.min || spec.text.max)" class="hint">
-                (length: {{ spec.text.min ?? 0 }} - {{ spec.text.max ?? '∞' }})
-              </span>
-            </label>
-            
-            <!-- Boolean input -->
-            <input
-              v-if="getArgumentType(spec) === 'boolean'"
-              :id="'arg-' + spec.name"
-              v-model="argumentValues[spec.name]"
-              type="checkbox"
-              class="checkbox-input"
-            />
-            
-            <!-- Numeric input with slider -->
-            <div v-else-if="getArgumentType(spec) === 'numeric'" class="numeric-input-group">
+
+        <div class="dialog-body">
+          <p v-if="!hasArguments" class="hint">This capability has no arguments.</p>
+
+          <div v-else class="arguments-form">
+            <div
+              v-for="spec in capability['argument-specs']"
+              :key="spec.name"
+              class="field"
+            >
+              <label :for="'arg-' + spec.name">
+                {{ spec.name }}
+                <span v-if="getArgumentType(spec) === 'numeric' && spec.numeric" class="range-hint">
+                  {{ spec.numeric.min }} – {{ spec.numeric.max }}
+                </span>
+                <span v-if="getArgumentType(spec) === 'text' && spec.text && (spec.text.min || spec.text.max)" class="range-hint">
+                  length {{ spec.text.min ?? 0 }} – {{ spec.text.max ?? '∞' }}
+                </span>
+              </label>
+
+              <!-- Boolean input -->
               <input
-                :id="'arg-slider-' + spec.name"
-                v-model.number="argumentValues[spec.name]"
-                type="range"
-                :min="spec.numeric.min"
-                :max="spec.numeric.max"
-                :step="(spec.numeric.max - spec.numeric.min) > 1 ? 1 : 0.01"
-                class="slider-input"
-              />
-              <input
+                v-if="getArgumentType(spec) === 'boolean'"
                 :id="'arg-' + spec.name"
-                v-model.number="argumentValues[spec.name]"
-                type="number"
-                :min="spec.numeric.min"
-                :max="spec.numeric.max"
-                :step="(spec.numeric.max - spec.numeric.min) > 1 ? 1 : 0.01"
-                class="number-input"
+                v-model="argumentValues[spec.name]"
+                type="checkbox"
+                class="checkbox-input"
+              />
+
+              <!-- Numeric input with slider -->
+              <div v-else-if="getArgumentType(spec) === 'numeric'" class="numeric-input-group">
+                <input
+                  :id="'arg-slider-' + spec.name"
+                  v-model.number="argumentValues[spec.name]"
+                  type="range"
+                  :min="spec.numeric.min"
+                  :max="spec.numeric.max"
+                  :step="(spec.numeric.max - spec.numeric.min) > 1 ? 1 : 0.01"
+                  class="slider-input"
+                />
+                <input
+                  :id="'arg-' + spec.name"
+                  v-model.number="argumentValues[spec.name]"
+                  type="number"
+                  :min="spec.numeric.min"
+                  :max="spec.numeric.max"
+                  :step="(spec.numeric.max - spec.numeric.min) > 1 ? 1 : 0.01"
+                  class="input input-sm number-input"
+                />
+              </div>
+
+              <!-- Text input -->
+              <input
+                v-else-if="getArgumentType(spec) === 'text'"
+                :id="'arg-' + spec.name"
+                v-model="argumentValues[spec.name]"
+                type="text"
+                :minlength="spec.text.min"
+                :maxlength="spec.text.max"
+                class="input"
               />
             </div>
-            
-            <!-- Text input -->
-            <input
-              v-else-if="getArgumentType(spec) === 'text'"
-              :id="'arg-' + spec.name"
-              v-model="argumentValues[spec.name]"
-              type="text"
-              :minlength="spec.text.min"
-              :maxlength="spec.text.max"
-              class="text-input"
-            />
           </div>
         </div>
-      </div>
-      
-      <div class="dialog-footer">
-        <button class="btn btn-secondary" @click="close">Cancel</button>
-        <button class="btn btn-primary" @click="triggerCapability">Trigger</button>
+
+        <div class="dialog-actions">
+          <button class="btn btn-ghost" @click="close">Cancel</button>
+          <button class="btn btn-primary" @click="triggerCapability">Send</button>
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.dialog-content {
-  background: white;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
+.capability-dialog {
+  width: 460px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
-
-.dialog-header {
+.dialog-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
+  gap: 12px;
+  margin-bottom: 18px;
 }
-
-.dialog-header h3 {
+.dialog-head .dialog-title {
   margin: 0;
-  font-size: 1.25rem;
-  color: #333;
+  overflow-wrap: anywhere;
 }
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  line-height: 1;
-  cursor: pointer;
-  color: #999;
-  padding: 0;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-}
-
-.close-btn:hover {
-  color: #333;
-}
-
 .dialog-body {
-  padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
-
-.no-arguments {
-  text-align: center;
-  color: #666;
-  padding: 1rem 0;
-}
-
-.arguments-form {
+.arguments-form .field label {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  align-items: baseline;
+  gap: 8px;
 }
-
-.argument-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.range-hint {
+  font-weight: 400;
+  color: var(--faint);
+  font-size: 0.8rem;
 }
-
-.argument-field label {
-  font-weight: 500;
-  color: #333;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.hint {
-  font-size: 0.85rem;
-  color: #666;
-  font-weight: normal;
-}
-
 .checkbox-input {
   width: 1.25rem;
   height: 1.25rem;
   cursor: pointer;
 }
-
 .numeric-input-group {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 14px;
+}
+.number-input {
+  width: 96px;
+  flex-shrink: 0;
 }
 
+/* The slider sends a value to a device, so its thumb is warm (outbound). */
 .slider-input {
-  width: 100%;
-  height: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  height: 6px;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
-  background: #ddd;
-  border-radius: 4px;
+  background: var(--track);
+  border-radius: 999px;
   outline: none;
 }
-
+.slider-input:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 30%, transparent);
+}
 .slider-input::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 1.25rem;
-  height: 1.25rem;
-  background: #42b983;
+  width: 20px;
+  height: 20px;
+  background: var(--warm);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--warm) 60%, transparent);
   cursor: pointer;
   border-radius: 50%;
-  transition: background 0.2s;
 }
-
-.slider-input::-webkit-slider-thumb:hover {
-  background: #369870;
-}
-
 .slider-input::-moz-range-thumb {
-  width: 1.25rem;
-  height: 1.25rem;
-  background: #42b983;
+  width: 14px;
+  height: 14px;
+  background: var(--warm);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--warm) 60%, transparent);
   cursor: pointer;
   border-radius: 50%;
-  border: none;
-  transition: background 0.2s;
-}
-
-.slider-input::-moz-range-thumb:hover {
-  background: #369870;
-}
-
-.number-input,
-.text-input {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.number-input:focus,
-.text-input:focus {
-  outline: none;
-  border-color: #42b983;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.btn {
-  padding: 0.5rem 1.25rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-secondary {
-  background: #f5f5f5;
-  color: #333;
-}
-
-.btn-secondary:hover {
-  background: #e0e0e0;
-}
-
-.btn-primary {
-  background: #42b983;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #369870;
 }
 </style>

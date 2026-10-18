@@ -70,33 +70,35 @@ async function startConversation() {
 <template>
   <div class="new-chat-view">
     <div class="pane-header">
-      <h1>New chat</h1>
-      <router-link :to="{ name: 'AIControl' }" class="back-link">← Back to conversations</router-link>
+      <h2 class="detail-title">New chat</h2>
+      <router-link :to="{ name: 'AIControl' }" class="icon-btn" title="Back to conversations" aria-label="Back to conversations">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </router-link>
     </div>
 
-    <div v-if="loadingStatus" class="empty">Checking chatbot status…</div>
-    <div v-else-if="statusError" class="error">Error: {{ statusError.message }}</div>
+    <p v-if="loadingStatus" class="empty">Checking the assistant's status…</p>
+    <div v-else-if="statusError" class="alert alert-error">Error: {{ statusError.message }}</div>
 
     <div v-else class="setup-card">
       <div v-if="!ready()" class="onboarding">
-        <p class="onboarding-intro">Before you can start a conversation, the chatbot needs an Anthropic API key:</p>
+        <p class="hint onboarding-intro">Before you can start a conversation, the assistant needs an Anthropic API key.</p>
 
-        <div class="step" :class="{ done: apiKeyConfigured }">
+        <div class="panel step" :class="{ done: apiKeyConfigured }">
           <div class="step-header">
             <span class="step-icon">{{ apiKeyConfigured ? '✓' : '1' }}</span>
             <span class="step-title">An Anthropic API key</span>
           </div>
           <form v-if="!apiKeyConfigured" @submit.prevent="setupApiKey" class="step-form">
-            <div class="form-group">
+            <div class="field">
               <label for="api-key-name">Name</label>
-              <input id="api-key-name" v-model="apiKeyName" type="text" required :disabled="settingUpApiKey" />
+              <input id="api-key-name" v-model="apiKeyName" type="text" class="input" required :disabled="settingUpApiKey" />
             </div>
-            <div class="form-group">
+            <div class="field">
               <label for="api-key-value">API key value</label>
-              <input id="api-key-value" v-model="apiKeyValue" type="password" required :disabled="settingUpApiKey" />
+              <input id="api-key-value" v-model="apiKeyValue" type="password" class="input" required :disabled="settingUpApiKey" />
             </div>
-            <div v-if="apiKeyError" class="error-msg">{{ apiKeyError.response?.data?.detail || apiKeyError.message }}</div>
-            <button type="submit" class="submit-btn" :disabled="settingUpApiKey">
+            <div v-if="apiKeyError" class="alert alert-error">{{ apiKeyError.response?.data?.detail || apiKeyError.message }}</div>
+            <button type="submit" class="btn btn-primary" :disabled="settingUpApiKey">
               {{ settingUpApiKey ? 'Saving…' : 'Save API key' }}
             </button>
           </form>
@@ -104,12 +106,12 @@ async function startConversation() {
       </div>
 
       <form v-else @submit.prevent="startConversation" class="start-form">
-        <div class="form-group">
+        <div class="field">
           <label for="query">What do you want to ask?</label>
-          <textarea id="query" v-model="query" rows="4" required :disabled="creating"></textarea>
+          <textarea id="query" v-model="query" rows="4" class="input" required :disabled="creating"></textarea>
         </div>
-        <div v-if="createError" class="error-msg">{{ createError.response?.data?.detail || createError.message }}</div>
-        <button type="submit" class="submit-btn" :disabled="creating">
+        <div v-if="createError" class="alert alert-error">{{ createError.response?.data?.detail || createError.message }}</div>
+        <button type="submit" class="btn btn-primary" :disabled="creating">
           {{ creating ? 'Starting…' : 'Start conversation' }}
         </button>
       </form>
@@ -130,93 +132,58 @@ async function startConversation() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-right: 1rem;
+  gap: 12px;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
-.pane-header h1 { margin-bottom: 0.5rem; }
-.back-link { color: #666; text-decoration: none; font-size: 0.9rem; }
-.back-link:hover { color: #42b983; }
-.error { color: red; padding: 0.5rem; }
-.empty { padding: 2rem 1rem; color: #999; font-style: italic; text-align: center; }
-
 .setup-card {
   max-width: 480px;
-  margin-top: 1rem;
+  margin-top: 8px;
 }
-.onboarding-intro { color: #555; margin-bottom: 1rem; }
-.step {
-  border: 1px solid #eee;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  background: #fff;
+.onboarding-intro {
+  margin: 0 0 14px;
 }
-.step.done { opacity: 0.7; }
+.step.done {
+  opacity: 0.7;
+}
 .step-header {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.75rem;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 .step-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: #f0f0f0;
+  border: 1px solid color-mix(in srgb, var(--warm) 40%, transparent);
+  color: var(--warm-ink);
   font-size: 0.85rem;
-  font-weight: bold;
+  font-weight: 700;
   flex-shrink: 0;
 }
-.step.done .step-icon { background: #e8f5e9; color: #1b5e20; }
-.step-title { font-weight: 600; }
-
-.step-form, .start-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.step.done .step-icon {
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green-ink);
 }
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.form-group label { font-size: 0.9rem; color: #444; font-weight: 500; }
-.form-group input, .form-group textarea {
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s;
-  resize: vertical;
-}
-.form-group input:focus, .form-group textarea:focus { border-color: #42b983; }
-.form-group input:disabled, .form-group textarea:disabled { background: #f5f5f5; }
-
-.error-msg {
-  background: #fdecea;
-  border: 1px solid #f5c6cb;
-  border-radius: 5px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  color: #721c24;
-}
-.submit-btn {
-  align-self: flex-start;
-  background: #42b983;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  padding: 0.5rem 1.25rem;
-  font-size: 0.95rem;
+.step-title {
   font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
 }
-.submit-btn:hover:not(:disabled) { background: #369b6f; }
-.submit-btn:disabled { opacity: 0.65; cursor: default; }
+.step-form,
+.start-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.step-form .field + .field,
+.start-form .field + .field {
+  margin-top: 0;
+}
+.step-form .btn,
+.start-form .btn {
+  align-self: flex-start;
+}
 </style>
