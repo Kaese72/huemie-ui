@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Humi favicon: the roofed H, drawn with square ends like the font's H.
+       Follows the browser's light/dark preference. -->
+  <style>
+    .m { fill: #24221f; stroke: #24221f; }
+    .d { fill: #c98420; }
+    @media (prefers-color-scheme: dark) {
+      .m { fill: #f3efe8; stroke: #f3efe8; }
+      .d { fill: #ffc46b; }
+    }
+  </style>
+  <path class="m" stroke-width="0" d="M24 46h16v16h20V46h16v46H60V76H40v16H24z"/>
+  <polyline class="m" style="fill: none" stroke-width="14" stroke-linejoin="miter" points="14,34 50,11 86,34"/>
+  <circle class="d" cx="50" cy="31" r="4.5"/>
+</svg>

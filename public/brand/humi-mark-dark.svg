@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Humi mark for dark backgrounds -->
+  <path fill="#f3efe8" d="M24 46h16v16h20V46h16v46H60V76H40v16H24z"/>
+  <polyline fill="none" stroke="#f3efe8" stroke-width="14" stroke-linejoin="miter" points="14,34 50,11 86,34"/>
+  <circle fill="#ffc46b" cx="50" cy="31" r="4.5"/>
+</svg>

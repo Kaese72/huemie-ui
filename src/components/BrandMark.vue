@@ -1,36 +1,29 @@
-<!-- The Humi logo: house outline with a lit door, plus the wordmark. Wrap it
-     in whatever link the context needs. -->
+<!-- The Humi logo: the wordmark with a house roof over its H.
+     Wrap it in whatever link the context needs. -->
+<script setup>
+import HumiH from './HumiH.vue'
+</script>
+
 <template>
-  <span class="brand">
-    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M5 15 16 6l11 9v11H5z" />
-      <rect x="13" y="18" width="6" height="8" rx="1" />
-    </svg>
-    <span>Humi</span>
+  <span class="brand" role="img" aria-label="Humi">
+    <HumiH /><span aria-hidden="true">umi</span>
   </span>
 </template>
 
 <style scoped>
 .brand {
+  --humi-ls: -0.03em;
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  padding-top: 0.3em;
   color: var(--text);
   font-weight: 800;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  line-height: 1;
   letter-spacing: -0.03em;
 }
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  fill: none;
-  stroke: var(--warm);
-  stroke-width: 2.2;
-  stroke-linejoin: round;
-}
-.brand-mark rect {
-  fill: var(--warm);
-  stroke: none;
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--warm) 80%, transparent));
+/* A slightly heavier roof at this small size, to match the 800-weight H. */
+.brand :deep(.roof svg) {
+  stroke-width: 0.16em;
 }
 </style>

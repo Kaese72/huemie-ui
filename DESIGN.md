@@ -12,7 +12,7 @@ Where things live in this repo:
 | `src/theme.css`, `src/ui.css` | Copied unchanged from cloud-ui (tokens, shared classes) |
 | `src/appliance.css` | Appliance-only classes: list pages, detail panes, tabs, data tables, values, status pages |
 | `src/components/AppTopBar.vue` | The desktop top bar (sections, More menu, theme toggle, user chip, log out) |
-| `src/components/BrandMark.vue`, `ThemeToggle.vue`, `UserChip.vue` | Copied unchanged from cloud-ui |
+| `src/components/BrandMark.vue`, `HumiH.vue`, `ThemeToggle.vue`, `UserChip.vue` | Copied unchanged from cloud-ui |
 | `src/composables/useTheme.js` | Copied unchanged from cloud-ui |
 | `src/composables/useCurrentUser.js` | Appliance version (same interface as cloud-ui's), feeds `UserChip` |
 | `src/App.vue` | The layouts (section 3) |
@@ -37,7 +37,8 @@ Rules for keeping them aligned:
    - `src/composables/useTheme.js`
    - the inline theme script in `index.html`
    - `ThemeToggle.vue`
-   - `BrandMark.vue`
+   - `BrandMark.vue` and `HumiH.vue`
+   - `public/favicon.svg` and `public/brand/`
    - `UserChip.vue`
 
    To change one, change it in cloud-ui first, then copy it across. Never
