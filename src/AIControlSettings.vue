@@ -63,7 +63,7 @@ async function replaceValue(key) {
 <template>
   <div class="scroll-page">
     <div class="page enter">
-      <div class="settings-head">
+      <div class="list-head settings-head">
         <div>
           <h1 class="list-title">AI Control</h1>
           <p class="list-lede">Settings for the assistant.</p>
@@ -120,12 +120,8 @@ async function replaceValue(key) {
 
 <style scoped>
 .settings-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 .key-hint {
   margin: -8px 0 18px;

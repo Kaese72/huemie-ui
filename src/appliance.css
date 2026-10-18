@@ -20,23 +20,32 @@
 }
 .list-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
   flex-shrink: 0;
+}
+/* Title and description share one line, the description small and quiet
+   beside the title, so the table keeps as much height as possible. */
+.list-head > div:not(.list-actions) {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  min-width: 0;
 }
 .list-title {
   margin: 0;
-  font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+  font-size: clamp(1.5rem, 2.2vw, 1.85rem);
   font-weight: 800;
   letter-spacing: -0.035em;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 .list-lede {
-  margin: 6px 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 .list-actions {
   display: flex;

@@ -125,10 +125,15 @@ Specific replacements for the old palette:
 - **AI Control's sub-pages** (Chat, Settings) are tabs at the top of the
   AI Control page, not a sub-menu in the nav.
 - **"Switch to mobile view"** is an entry in the More menu.
-- **Page heading block:** a `.page-title` (short noun) and, where helpful,
-  a `.page-lede`. Use them on list pages and on narrow pages alike. On list
-  pages the primary action ("New rule", "Add user") sits on the heading
-  row, on the right.
+- **Heading row on list pages** (`.list-head`):
+  - A `.list-title` (short noun, about `1.85rem`/800).
+  - A `.list-lede` description on the **same line**, to the right of the
+    title, small (`0.88rem`) and `--muted`. It never goes underneath, so
+    the table keeps as much height as possible.
+  - The primary action ("New rule", "New user") or tabs sit at the right
+    end of the same row.
+- **Content pages** (Home, Cloud Connect) use the larger `.page-title` and
+  `.page-lede` from `ui.css`, stacked.
 
 ## 4. Tables (`TableShell`, `TableHeaderCell`)
 
