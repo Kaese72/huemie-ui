@@ -120,7 +120,10 @@ async function forgetConversation(conversation, event) {
         <h1 class="list-title">AI Control</h1>
         <p class="list-lede">Ask an assistant to look at and act on your home.</p>
       </div>
-      <AiControlTabs />
+      <div class="list-actions">
+        <AiControlTabs />
+        <button class="btn btn-primary" @click="router.push({ name: 'AIControlNew' })">New chat</button>
+      </div>
     </div>
     <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
     <div class="split-content">
