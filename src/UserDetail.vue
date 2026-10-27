@@ -1,13 +1,14 @@
 <script setup>
 
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRoute } from 'vue-router'
 import { useAuth } from './composables/useAuth.js'
 import BoolBadge from './components/BoolBadge.vue'
+import PermissionsDialog from './components/PermissionsDialog.vue'
 
-const emit = defineEmits(['updated'])
-const { cloudLoginAvailable, currentUserId } = useAuth()
+const emit = defineEmits(['updated', 'deleted'])
+const { cloudLoginAvailable, currentUserId, currentUserIsAdmin, hasModify } = useAuth()
 
 const route = useRoute()
 const user = ref(null)
@@ -26,6 +27,16 @@ const linkError = ref(null)
 // user to complete the link for.
 const CLOUD_LINK_STATE_KEY = 'cloudLinkState'
 
+// "us" is authentication/usertoken.ResourceUsers - the server is the one
+// that actually enforces this; this only decides whether to show the button.
+const canManagePermissions = computed(() => currentUserIsAdmin.value || hasModify('us'))
+const showPermissionsDialog = ref(false)
+
+const showPasswordDialog = ref(false)
+const changingPassword = ref(false)
+const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
+const passwordError = ref(null)
+
 onMounted(fetchUser)
 onMounted(async () => { cloudAvailable.value = await cloudLoginAvailable() })
 watch(() => route.params.id, fetchUser)
@@ -34,6 +45,8 @@ async function fetchUser() {
   if (!route.params.id) return
   user.value = null
   saveError.value = null
+  showPermissionsDialog.value = false
+  showPasswordDialog.value = false
   try {
     const response = await axios.get(`/authentication-service/v0/users/${route.params.id}`)
     user.value = response.data
@@ -80,6 +93,55 @@ async function saveUser() {
   }
 }
 
+async function deleteUser() {
+  if (!user.value) return
+  if (!confirm(`Delete user "${user.value.username}"?`)) return
+  try {
+    await axios.delete(`/authentication-service/v0/users/${user.value.id}`)
+    emit('deleted', user.value.id)
+  } catch (err) {
+    error.value = err
+  }
+}
+
+function onPermissionsUpdated(updated) {
+  user.value = updated
+  emit('updated', updated)
+}
+
+function openPasswordDialog() {
+  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  passwordError.value = null
+  showPasswordDialog.value = true
+}
+
+function closePasswordDialog() {
+  if (changingPassword.value) return
+  showPasswordDialog.value = false
+}
+
+async function changePassword() {
+  const { currentPassword, newPassword, confirmPassword } = passwordForm.value
+  if (!currentPassword || !newPassword || !confirmPassword) return
+  if (newPassword !== confirmPassword) {
+    passwordError.value = 'New passwords do not match.'
+    return
+  }
+  changingPassword.value = true
+  passwordError.value = null
+  try {
+    await axios.put('/authentication-service/v0/users/me/update-password', {
+      currentPassword,
+      newPassword,
+    })
+    showPasswordDialog.value = false
+  } catch (err) {
+    passwordError.value = err.response?.data?.detail ?? err.message
+  } finally {
+    changingPassword.value = false
+  }
+}
+
 // Sends the browser to the cloud to link this user's account. On return,
 // CloudLinkCallback.vue finishes the link and comes back here.
 async function linkCloud() {
@@ -113,6 +175,7 @@ async function linkCloud() {
         {{ user.username }}
         <span v-if="user.id === currentUserId" class="badge badge-warm">You</span>
       </h2>
+      <button class="btn btn-danger btn-sm" @click="deleteUser">Delete user</button>
     </div>
     <div class="detail-meta">
       <span><strong>ID</strong> <span class="mono">{{ user.id }}</span></span>
@@ -126,6 +189,13 @@ async function linkCloud() {
       <dd>
         <BoolBadge :value="!!user.localLogin" />
         <span :class="user.localLogin ? '' : 'na'">{{ user.localLogin ? 'Yes, has a password' : 'No' }}</span>
+        <button
+          v-if="user.id === currentUserId"
+          class="btn btn-ghost btn-sm"
+          @click="openPasswordDialog"
+        >
+          Change password
+        </button>
       </dd>
       <dt>Humi Cloud</dt>
       <dd>
@@ -142,6 +212,22 @@ async function linkCloud() {
       </dd>
     </dl>
     <div v-if="linkError" class="alert alert-error">{{ linkError }}</div>
+
+    <h3 class="section-title">Access</h3>
+    <dl class="kv">
+      <dt>Admin</dt>
+      <dd>
+        <BoolBadge :value="!!user.permissions?.admin" />
+        <span :class="user.permissions?.admin ? '' : 'na'">{{ user.permissions?.admin ? 'Yes, full access' : 'No' }}</span>
+        <button
+          v-if="canManagePermissions"
+          class="btn btn-ghost btn-sm"
+          @click="showPermissionsDialog = true"
+        >
+          Permissions
+        </button>
+      </dd>
+    </dl>
 
     <h3 class="section-title">Profile</h3>
     <div class="name-pair">
@@ -165,6 +251,68 @@ async function linkCloud() {
       </button>
       <button class="btn btn-ghost" :disabled="saving || !isDirty()" @click="resetForm">Reset</button>
     </div>
+
+    <!-- Teleported so the detail pane's stacking context can't trap it below other UI -->
+    <Teleport to="body">
+      <div v-if="showPasswordDialog" class="dialog-backdrop" @click.self="closePasswordDialog">
+        <div class="dialog" role="dialog" aria-modal="true">
+          <h3 class="dialog-title">Change password</h3>
+          <div class="field">
+            <label for="current-password">Current password</label>
+            <input
+              id="current-password"
+              v-model="passwordForm.currentPassword"
+              class="input"
+              type="password"
+              autocomplete="current-password"
+              :disabled="changingPassword"
+            />
+          </div>
+          <div class="field">
+            <label for="new-password-1">New password</label>
+            <input
+              id="new-password-1"
+              v-model="passwordForm.newPassword"
+              class="input"
+              type="password"
+              autocomplete="new-password"
+              :disabled="changingPassword"
+            />
+          </div>
+          <div class="field">
+            <label for="new-password-2">Confirm new password</label>
+            <input
+              id="new-password-2"
+              v-model="passwordForm.confirmPassword"
+              class="input"
+              type="password"
+              autocomplete="new-password"
+              :disabled="changingPassword"
+              @keyup.enter="changePassword"
+            />
+          </div>
+          <div v-if="passwordError" class="alert alert-error">{{ passwordError }}</div>
+          <div class="dialog-actions">
+            <button class="btn btn-ghost" :disabled="changingPassword" @click="closePasswordDialog">Cancel</button>
+            <button
+              class="btn btn-primary"
+              :disabled="changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword"
+              @click="changePassword"
+            >
+              {{ changingPassword ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <PermissionsDialog
+      :show="showPermissionsDialog"
+      :user="user"
+      :viewer-is-admin="currentUserIsAdmin"
+      @close="showPermissionsDialog = false"
+      @updated="onPermissionsUpdated"
+    />
   </div>
   <p v-else class="empty">Loading…</p>
 </template>

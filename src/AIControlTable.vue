@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
+import { watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import TableShell from './components/TableShell.vue'
@@ -9,7 +9,6 @@ import { useTableList } from './composables/useTableList.js'
 
 const router = useRouter()
 const route = useRoute()
-const openMenuId = ref(null)
 
 const columns = [
   { key: 'id', label: 'ID', width: '60px' },
@@ -17,7 +16,6 @@ const columns = [
   { key: 'status', label: 'Status', width: '140px', filter: { type: 'text', operators: ['text-eq'] } },
   { key: 'initiative', label: 'Turn', width: '100px', filter: { type: 'text', operators: ['text-eq'] } },
   { key: 'updated', label: 'Updated', width: '220px', sortable: true },
-  { key: 'actions', label: '', width: '48px' },
 ]
 
 async function fetchPage({ offset, limit, filters, sort }) {
@@ -47,7 +45,6 @@ const {
   onColumnFilterClear,
   onSortChange,
   loading,
-  refresh,
 } = useTableList({ fetchPage })
 
 // Per the AI Control design: with zero conversations - and no filter
@@ -59,18 +56,6 @@ watch([ready, conversations, columnFilters], ([isReady, rows, filters]) => {
   if (isReady && rows.length === 0 && Object.keys(filters).length === 0 && !error.value) {
     router.replace({ name: 'AIControlNew' })
   }
-})
-
-function closeMenu() {
-  openMenuId.value = null
-}
-
-onMounted(() => {
-  window.addEventListener('click', closeMenu)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('click', closeMenu)
 })
 
 function onRowClick(conversation) {
@@ -94,23 +79,6 @@ const selectedId = computed(() => {
   return null
 })
 const showDetail = computed(() => selectedId.value != null)
-
-function toggleMenu(conversationId, event) {
-  event.stopPropagation()
-  openMenuId.value = openMenuId.value === conversationId ? null : conversationId
-}
-
-async function forgetConversation(conversation, event) {
-  event.stopPropagation()
-  openMenuId.value = null
-  if (!confirm(`Forget conversation "${conversation.name}"? This cannot be undone.`)) return
-  try {
-    await axios.post(`/chatbot-service/v0/conversations/${conversation.id}/forget`)
-    await refresh()
-  } catch (err) {
-    error.value = err
-  }
-}
 </script>
 
 <template>
@@ -152,14 +120,6 @@ async function forgetConversation(conversation, event) {
         </template>
         <template #cell-initiative="{ row }">{{ row.initiative === 'AGENT' ? 'Agent' : 'User' }}</template>
         <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
-        <template #cell-actions="{ row }">
-          <button class="icon-btn menu-btn" title="More" aria-label="More" @click="toggleMenu(row.id, $event)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v.01M12 12v.01M12 18.5v.01" /></svg>
-          </button>
-          <div v-if="openMenuId === row.id" class="menu" @click.stop>
-            <button class="menu-item danger" @click="forgetConversation(row, $event)">Forget conversation</button>
-          </div>
-        </template>
         <template #empty>
           <div v-if="ready" class="table-empty">
             <p>No conversations match the current filters.</p>
@@ -172,41 +132,3 @@ async function forgetConversation(conversation, event) {
     </div>
   </div>
 </template>
-
-<style scoped>
-.menu-btn {
-  width: 28px;
-  height: 28px;
-}
-.menu-btn svg {
-  stroke-width: 3;
-}
-.menu {
-  position: absolute;
-  right: 1rem;
-  padding: 6px;
-  background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
-  border-radius: 14px;
-  box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow-ink) 30%, transparent);
-  z-index: 10;
-  animation: ui-rise 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.menu-item {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 9px;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.88rem;
-  color: var(--text);
-  white-space: nowrap;
-}
-.menu-item:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
-.menu-item.danger { color: var(--danger-ink); }
-.menu-item.danger:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); }
-</style>

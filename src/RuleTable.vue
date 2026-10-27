@@ -24,6 +24,7 @@ function isCooldownActive(rule) {
 }
 
 const selectedId = computed(() => route.params.id)
+const creating = computed(() => route.name === 'RuleNew')
 
 async function fetchPage({ offset, limit, filters, sort }) {
   const params = { offset, limit }
@@ -62,19 +63,14 @@ function onRowClick(rule) {
   }
 }
 
-async function createRule() {
-  try {
-    const response = await axios.post('/ittt-orchestrator/v0/rules', {
-      name: 'New rule',
-      enabled: false,
-    })
-    const created = response.data
-    // Pagination/total count shift when a rule is added, so refetch rather than pushing locally.
-    await refresh()
-    router.push({ name: 'RuleDetail', params: { id: created.id } })
-  } catch (err) {
-    error.value = err
-  }
+function createRule() {
+  router.push({ name: 'RuleNew' })
+}
+
+async function onRuleCreated(created) {
+  // Pagination/total count shift when a rule is added, so refetch rather than pushing locally.
+  await refresh()
+  router.replace({ name: 'RuleDetail', params: { id: created.id } })
 }
 
 function onRuleUpdated(updated) {
@@ -141,8 +137,8 @@ function onRuleDeleted() {
         </template>
       </TableShell>
 
-      <DetailOverlay v-if="selectedId">
-        <router-view @updated="onRuleUpdated" @deleted="onRuleDeleted" />
+      <DetailOverlay v-if="selectedId || creating">
+        <router-view @created="onRuleCreated" @updated="onRuleUpdated" @deleted="onRuleDeleted" />
       </DetailOverlay>
     </div>
   </div>

@@ -271,6 +271,8 @@ async function forgetDevice() {
 .edit-name {
   opacity: 0;
   transition: opacity 0.15s;
+  /* Let the 32px button overhang the title line instead of making .detail-head taller. */
+  margin-block: -4px;
 }
 .detail-title:hover .edit-name,
 .edit-name:focus-visible {

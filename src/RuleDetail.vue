@@ -8,7 +8,11 @@ import { useConditionDrag, applySwap, applyMoveToSlot } from './composables/useC
 
 const route = useRoute()
 const router = useRouter()
-const emit = defineEmits(['updated', 'deleted'])
+const emit = defineEmits(['created', 'updated', 'deleted'])
+
+// The same view creates rules (route RuleNew) and edits existing ones (route RuleDetail).
+// A new rule only exists locally until the first save, which POSTs everything at once.
+const isNew = computed(() => route.name === 'RuleNew')
 
 const rule = ref(null)
 const error = ref(null)
@@ -155,7 +159,12 @@ async function evaluateRule() {
   evaluating.value = true
   evalResult.value = null
   try {
-    const res = await axios.get(`/ittt-orchestrator/v0/rules/${rule.value.id}/evaluate`)
+    // An unsaved rule has nothing stored to evaluate, so test the tree being edited instead.
+    const res = isNew.value
+      ? await axios.post('/ittt-orchestrator/v0/evaluate', {
+          rule: { name: editName.value, enabled: editEnabled.value, 'condition-tree': editConditionTree.value },
+        })
+      : await axios.get(`/ittt-orchestrator/v0/rules/${rule.value.id}/evaluate`)
     evalResult.value = res.data
   } catch (err) {
     error.value = err
@@ -167,7 +176,7 @@ async function evaluateRule() {
 // Action state
 const actions = ref([])
 const showActionForm = ref(false)
-const editingAction = ref(null) // { actionId, type, id, capability, args }
+const editingAction = ref(null) // { index, type, id, capability, args }; index is null for a new action
 
 onMounted(() => {
   fetchRule()
@@ -177,11 +186,17 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
   clearTimeout(historyTimer)
 })
-watch(() => route.params.id, fetchRule)
+watch(() => `${String(route.name)}/${route.params.id ?? ''}`, fetchRule)
 
 async function fetchRule() {
-  if (!route.params.id) return
   error.value = null
+  evalResult.value = null
+  cancelActionForm()
+  if (isNew.value) {
+    applyRule({ name: 'New rule', enabled: false, actions: [] })
+    return
+  }
+  if (!route.params.id) return
   try {
     const res = await axios.get(`/ittt-orchestrator/v0/rules/${route.params.id}`)
     applyRule(res.data)
@@ -215,12 +230,19 @@ function removeRootCondition() {
 async function saveRule() {
   if (!rule.value) return
   saving.value = true
+  const body = {
+    name: editName.value,
+    enabled: editEnabled.value,
+    'condition-tree': editConditionTree.value ?? undefined,
+    actions: actions.value.map(({ type, id, capability, args }) => ({ type, id, capability, args })),
+  }
   try {
-    const res = await axios.put(`/ittt-orchestrator/v0/rules/${rule.value.id}`, {
-      name: editName.value,
-      enabled: editEnabled.value,
-      'condition-tree': editConditionTree.value ?? undefined,
-    })
+    if (isNew.value) {
+      const res = await axios.post('/ittt-orchestrator/v0/rules', body)
+      emit('created', res.data)
+      return
+    }
+    const res = await axios.put(`/ittt-orchestrator/v0/rules/${rule.value.id}`, body)
     applyRule(res.data)
     emit('updated', res.data)
   } catch (err) {
@@ -244,13 +266,13 @@ async function deleteRule() {
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 function openNewActionForm() {
-  editingAction.value = { actionId: null, type: 'device-capability', id: 1, capability: '', args: '' }
+  editingAction.value = { index: null, type: 'device-capability', id: 1, capability: '', args: '' }
   showActionForm.value = true
 }
 
-function openEditActionForm(action) {
+function openEditActionForm(action, index) {
   editingAction.value = {
-    actionId: action['action-id'],
+    index,
     type: action.type,
     id: action.id,
     capability: action.capability,
@@ -269,40 +291,26 @@ function parseArgs(raw) {
   try { return JSON.parse(raw) } catch { return {} }
 }
 
-async function saveAction() {
+// Actions are edited locally and persisted together with the rule by saveRule().
+function applyAction() {
   if (!editingAction.value) return
-  const payload = {
+  const action = {
     type: editingAction.value.type,
     id: editingAction.value.id,
     capability: editingAction.value.capability,
     args: parseArgs(editingAction.value.args),
   }
-  try {
-    if (editingAction.value.actionId) {
-      const res = await axios.put(
-        `/ittt-orchestrator/v0/rules/${rule.value.id}/actions/${editingAction.value.actionId}`,
-        payload
-      )
-      const idx = actions.value.findIndex(a => a['action-id'] === editingAction.value.actionId)
-      if (idx !== -1) actions.value.splice(idx, 1, res.data)
-    } else {
-      const res = await axios.post(`/ittt-orchestrator/v0/rules/${rule.value.id}/actions`, payload)
-      actions.value.push(res.data)
-    }
-    cancelActionForm()
-  } catch (err) {
-    error.value = err
+  if (editingAction.value.index !== null) {
+    actions.value.splice(editingAction.value.index, 1, action)
+  } else {
+    actions.value.push(action)
   }
+  cancelActionForm()
 }
 
-async function deleteAction(action) {
-  if (!confirm(`Delete action "${action.capability}"?`)) return
-  try {
-    await axios.delete(`/ittt-orchestrator/v0/rules/${rule.value.id}/actions/${action['action-id']}`)
-    actions.value = actions.value.filter(a => a['action-id'] !== action['action-id'])
-  } catch (err) {
-    error.value = err
-  }
+function removeAction(index) {
+  actions.value.splice(index, 1)
+  if (editingAction.value?.index === index) cancelActionForm()
 }
 </script>
 
@@ -312,10 +320,10 @@ async function deleteAction(action) {
   <div v-else class="rule-detail">
 
     <div class="detail-head">
-      <h2 class="detail-title">{{ rule.name }}</h2>
-      <button class="btn btn-danger btn-sm" @click="deleteRule">Delete rule</button>
+      <h2 class="detail-title">{{ isNew ? 'New rule' : rule.name }}</h2>
+      <button v-if="!isNew" class="btn btn-danger btn-sm" @click="deleteRule">Delete rule</button>
     </div>
-    <div class="detail-meta">
+    <div v-if="!isNew" class="detail-meta">
       <span><strong>ID</strong> <span class="mono">{{ rule.id }}</span></span>
     </div>
 
@@ -329,7 +337,7 @@ async function deleteAction(action) {
         <label class="field-label" for="rule-enabled">Enabled</label>
         <input id="rule-enabled" v-model="editEnabled" type="checkbox" class="enabled-check" />
       </div>
-      <div class="field-row">
+      <div v-if="!isNew" class="field-row">
         <span class="field-label">Next occurrence</span>
         <span class="field-value">{{ rule['next-occurence'] ? new Date(rule['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) : '—' }}</span>
       </div>
@@ -367,9 +375,9 @@ async function deleteAction(action) {
     <!-- ── Save / Test row ── -->
     <div class="save-row">
       <button class="btn btn-primary" @click="saveRule" :disabled="saving">
-        {{ saving ? 'Saving…' : 'Save rule' }}
+        {{ saving ? 'Saving…' : (isNew ? 'Create rule' : 'Save rule') }}
       </button>
-      <button class="btn btn-ghost" @click="evaluateRule" :disabled="evaluating">
+      <button class="btn btn-ghost" @click="evaluateRule" :disabled="evaluating || (isNew && !editConditionTree)">
         {{ evaluating ? 'Testing…' : 'Test now' }}
       </button>
       <span v-if="evalResult !== null" class="eval-result">
@@ -393,6 +401,7 @@ async function deleteAction(action) {
       <p v-if="actions.length === 0 && !showActionForm" class="hint">
         No actions configured.
       </p>
+      <p v-else class="hint">Action changes are stored when you save the rule.</p>
 
       <table v-if="actions.length > 0" class="data-table actions-table">
         <thead>
@@ -405,7 +414,7 @@ async function deleteAction(action) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="action in actions" :key="action['action-id']">
+          <tr v-for="(action, index) in actions" :key="index">
             <td class="out-cell">
               <svg class="out-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </td>
@@ -413,8 +422,8 @@ async function deleteAction(action) {
             <td class="mono">{{ action.id }}</td>
             <td>{{ action.capability }}</td>
             <td class="actions">
-              <button class="btn btn-ghost btn-sm" @click="openEditActionForm(action)">Edit</button>
-              <button class="btn btn-danger btn-sm" @click="deleteAction(action)">Delete</button>
+              <button class="btn btn-ghost btn-sm" @click="openEditActionForm(action, index)">Edit</button>
+              <button class="btn btn-danger btn-sm" @click="removeAction(index)">Remove</button>
             </td>
           </tr>
         </tbody>
@@ -422,7 +431,7 @@ async function deleteAction(action) {
 
       <!-- Inline action form -->
       <div v-if="showActionForm && editingAction" class="action-form">
-        <h4 class="action-form-title">{{ editingAction.actionId ? 'Edit action' : 'New action' }}</h4>
+        <h4 class="action-form-title">{{ editingAction.index !== null ? 'Edit action' : 'New action' }}</h4>
         <div class="form-grid">
           <label for="action-type">Type</label>
           <select id="action-type" v-model="editingAction.type" class="input input-sm">
@@ -441,7 +450,7 @@ async function deleteAction(action) {
         </div>
         <div class="form-buttons">
           <button class="btn btn-ghost btn-sm" @click="cancelActionForm">Cancel</button>
-          <button class="btn btn-primary btn-sm" @click="saveAction">Save action</button>
+          <button class="btn btn-primary btn-sm" @click="applyAction">{{ editingAction.index !== null ? 'Update action' : 'Add action' }}</button>
         </div>
       </div>
     </section>
@@ -476,9 +485,6 @@ async function deleteAction(action) {
   display: flex;
   flex-direction: column;
 }
-.detail-head {
-  align-items: center;
-}
 .section {
   margin-bottom: 24px;
 }
@@ -488,6 +494,8 @@ async function deleteAction(action) {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+  /* As tall as a .btn-sm, so the section doesn't jump when its button is hidden. */
+  min-height: calc(0.85rem * 1.2 + 14px);
 }
 .section-header .section-title {
   margin: 0;

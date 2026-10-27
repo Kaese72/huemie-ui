@@ -25,6 +25,9 @@
   gap: 16px;
   margin-bottom: 14px;
   flex-shrink: 0;
+  /* As tall as a .btn (line height + padding + border), so the title sits
+     in the same place whether or not the page has actions. */
+  min-height: calc(0.95rem * 1.2 + 22px);
 }
 /* Title and description share one line, the description small and quiet
    beside the title, so the table keeps as much height as possible. */
@@ -90,6 +93,8 @@
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 6px;
+  /* As tall as a .btn-sm, for the same reason as .list-head. */
+  min-height: calc(0.85rem * 1.2 + 14px);
 }
 .detail-title {
   flex: 1;

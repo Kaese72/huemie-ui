@@ -64,7 +64,10 @@ const routes = [
     path: '/rules',
     name: 'Rules',
     component: RuleTable,
-    children: [{ path: ':id', name: 'RuleDetail', component: RuleDetail }]
+    children: [
+      { path: 'new', name: 'RuleNew', component: RuleDetail },
+      { path: ':id', name: 'RuleDetail', component: RuleDetail },
+    ]
   },
   {
     path: '/users',
