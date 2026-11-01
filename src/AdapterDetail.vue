@@ -156,16 +156,17 @@ async function updateImageTag() {
     <dl class="kv">
       <dt>Name</dt>
       <dd>{{ adapter.name }}</dd>
-      <dt>Synced</dt>
+      <dt>Last deployed</dt>
       <dd>
         <span v-if="adapter.synced">{{ adapter.synced }}</span>
-        <span v-else class="na">Not synced</span>
+        <span v-else class="na">Not deployed</span>
         <button
           class="btn btn-ghost btn-sm"
           :disabled="syncingAdapter"
+          title="Deploys the current image and configuration. The adapter restarts within about a minute."
           @click="syncAdapter"
         >
-          {{ syncingAdapter ? 'Syncing…' : 'Sync' }}
+          {{ syncingAdapter ? 'Deploying…' : 'Deploy' }}
         </button>
       </dd>
       <dt>Created</dt>

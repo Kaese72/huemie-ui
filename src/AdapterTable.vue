@@ -24,7 +24,7 @@ const columns = [
   { key: 'imageTag', label: 'Tag', sortable: true, filter: { type: 'text' } },
   { key: 'created', label: 'Created', width: '200px', sortable: true, filter: { type: 'date' } },
   { key: 'updated', label: 'Updated', width: '200px', sortable: true, filter: { type: 'date' } },
-  { key: 'synced', label: 'Synced' },
+  { key: 'synced', label: 'Last deployed' },
 ]
 
 async function fetchPage({ offset, limit, filters, sort }) {
@@ -138,7 +138,7 @@ const selectedId = computed(() => route.params.id)
       >
         <template #cell-created="{ row }">{{ new Date(row.created).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
         <template #cell-updated="{ row }">{{ new Date(row.updated).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
-        <template #cell-synced="{ row }"><span v-if="row.synced">{{ row.synced }}</span><span v-else class="na">Not synced</span></template>
+        <template #cell-synced="{ row }"><span v-if="row.synced">{{ row.synced }}</span><span v-else class="na">Not deployed</span></template>
       </TableShell>
       <DetailOverlay v-if="selectedId">
         <router-view />
