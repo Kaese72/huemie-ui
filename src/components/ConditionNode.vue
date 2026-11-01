@@ -11,6 +11,7 @@ const emit = defineEmits(['update', 'remove'])
 import { computed, inject, ref } from 'vue'
 import { useTimezones, localTimezone } from '../composables/useTimezones.js'
 import { pathsEqual } from '../composables/useConditionDrag.js'
+import IdPicker from './IdPicker.vue'
 
 const allTimezones = useTimezones()
 const drag = inject('conditionDrag', null)
@@ -230,11 +231,10 @@ function removeOr()   { update({ or:  null }) }
         </template>
 
         <template v-else-if="node.condition.type === 'device-id-attribute-boolean-eq'">
-          <span class="field-label">Device ID</span>
-          <input type="number" min="1"
-            :value="node.condition.id"
-            @input="updateCondition({ id: parseInt($event.target.value) || 1 })"
-            class="id-input" />
+          <span class="field-label">Device</span>
+          <IdPicker compact kind="device"
+            :model-value="node.condition.id"
+            @update:model-value="updateCondition({ id: $event })" />
           <span class="field-label">.</span>
           <input type="text" placeholder="attribute"
             :value="node.condition.attribute"
@@ -251,11 +251,10 @@ function removeOr()   { update({ or:  null }) }
         </template>
 
         <template v-else-if="isNumberType">
-          <span class="field-label">Device ID</span>
-          <input type="number" min="1"
-            :value="node.condition.id"
-            @input="updateCondition({ id: parseInt($event.target.value) || 1 })"
-            class="id-input" />
+          <span class="field-label">Device</span>
+          <IdPicker compact kind="device"
+            :model-value="node.condition.id"
+            @update:model-value="updateCondition({ id: $event })" />
           <span class="field-label">.</span>
           <input type="text" placeholder="attribute"
             :value="node.condition.attribute"
@@ -276,11 +275,10 @@ function removeOr()   { update({ or:  null }) }
         </template>
 
         <template v-else-if="isTextType">
-          <span class="field-label">Device ID</span>
-          <input type="number" min="1"
-            :value="node.condition.id"
-            @input="updateCondition({ id: parseInt($event.target.value) || 1 })"
-            class="id-input" />
+          <span class="field-label">Device</span>
+          <IdPicker compact kind="device"
+            :model-value="node.condition.id"
+            @update:model-value="updateCondition({ id: $event })" />
           <span class="field-label">.</span>
           <input type="text" placeholder="attribute"
             :value="node.condition.attribute"
@@ -438,7 +436,6 @@ function removeOr()   { update({ or:  null }) }
 /* All the small inline controls share one look (a compact .input). */
 .type-select,
 .time-input,
-.id-input,
 .attr-input,
 .bool-select,
 .num-input,
@@ -458,7 +455,6 @@ function removeOr()   { update({ or:  null }) }
 }
 .type-select:focus,
 .time-input:focus,
-.id-input:focus,
 .attr-input:focus,
 .bool-select:focus,
 .num-input:focus,
@@ -480,7 +476,6 @@ function removeOr()   { update({ or:  null }) }
   font-weight: 600;
 }
 .time-input { width: 110px; }
-.id-input { width: 64px; }
 .attr-input { width: 100px; }
 .num-input { width: 80px; }
 .text-value-input { width: 140px; }

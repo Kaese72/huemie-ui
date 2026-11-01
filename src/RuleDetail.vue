@@ -3,6 +3,7 @@ import { ref, watch, onMounted, onUnmounted, provide, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import ConditionNode from './components/ConditionNode.vue'
+import IdPicker from './components/IdPicker.vue'
 import { localTimezone } from './composables/useTimezones.js'
 import { useConditionDrag, applySwap, applyMoveToSlot } from './composables/useConditionDrag.js'
 
@@ -266,7 +267,7 @@ async function deleteRule() {
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 function openNewActionForm() {
-  editingAction.value = { index: null, type: 'device-capability', id: 1, capability: '', args: '' }
+  editingAction.value = { index: null, type: 'device-capability', id: null, capability: '', args: '' }
   showActionForm.value = true
 }
 
@@ -293,7 +294,7 @@ function parseArgs(raw) {
 
 // Actions are edited locally and persisted together with the rule by saveRule().
 function applyAction() {
-  if (!editingAction.value) return
+  if (!editingAction.value || editingAction.value.id == null) return
   const action = {
     type: editingAction.value.type,
     id: editingAction.value.id,
@@ -434,13 +435,17 @@ function removeAction(index) {
         <h4 class="action-form-title">{{ editingAction.index !== null ? 'Edit action' : 'New action' }}</h4>
         <div class="form-grid">
           <label for="action-type">Type</label>
-          <select id="action-type" v-model="editingAction.type" class="input input-sm">
+          <select id="action-type" v-model="editingAction.type" class="input input-sm" @change="editingAction.id = null">
             <option value="device-capability">device-capability</option>
             <option value="group-capability">group-capability</option>
           </select>
 
           <label for="action-target">Target ID</label>
-          <input id="action-target" type="number" v-model.number="editingAction.id" min="1" class="input input-sm" />
+          <IdPicker
+            id="action-target"
+            v-model="editingAction.id"
+            :kind="editingAction.type === 'group-capability' ? 'group' : 'device'"
+          />
 
           <label for="action-capability">Capability</label>
           <input id="action-capability" type="text" v-model="editingAction.capability" placeholder="e.g. activate" class="input input-sm" />
@@ -450,7 +455,7 @@ function removeAction(index) {
         </div>
         <div class="form-buttons">
           <button class="btn btn-ghost btn-sm" @click="cancelActionForm">Cancel</button>
-          <button class="btn btn-primary btn-sm" @click="applyAction">{{ editingAction.index !== null ? 'Update action' : 'Add action' }}</button>
+          <button class="btn btn-primary btn-sm" :disabled="editingAction.id == null" @click="applyAction">{{ editingAction.index !== null ? 'Update action' : 'Add action' }}</button>
         </div>
       </div>
     </section>
