@@ -20,6 +20,15 @@ const SEARCH_DEBOUNCE_MS = 200
 const endpoint = computed(() => `/device-store/v0/${props.kind}s`)
 const kindLabel = computed(() => props.kind === 'group' ? 'group' : 'device')
 
+// The field has a fixed width and cuts long names off, so the tooltip shows
+// the whole thing.
+const tooltip = computed(() => {
+  if (props.modelValue == null) return `Choose ${kindLabel.value}`
+  if (selectedName.value) return `#${props.modelValue} ${selectedName.value}`
+  if (selectedMissing.value) return `#${props.modelValue} Unknown ${kindLabel.value}`
+  return `#${props.modelValue}`
+})
+
 // ── Selected item's name ─────────────────────────────────────────────────────
 
 const selectedName = ref(null)
@@ -142,14 +151,14 @@ function onSearchKeydown(event) {
     type="button"
     class="id-picker"
     :class="{ 'id-picker--compact': compact }"
-    :title="`Choose ${kindLabel}`"
+    :title="tooltip"
     @click="openDialog"
   >
-    <span v-if="modelValue == null" class="id-picker-placeholder">Choose {{ kindLabel }}…</span>
+    <span v-if="modelValue == null" class="id-picker-text id-picker-placeholder">Choose {{ kindLabel }}…</span>
     <template v-else>
-      <span v-if="selectedName" class="id-picker-name">{{ selectedName }}</span>
-      <span v-else-if="selectedMissing" class="id-picker-missing">Unknown {{ kindLabel }}</span>
-      <span class="mono">#{{ modelValue }}</span>
+      <span class="mono id-picker-id">#{{ modelValue }}</span>
+      <span v-if="selectedName" class="id-picker-text id-picker-name">{{ selectedName }}</span>
+      <span v-else-if="selectedMissing" class="id-picker-text id-picker-missing">Unknown {{ kindLabel }}</span>
     </template>
     <svg class="id-picker-icon" viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="11" cy="11" r="6" /><path d="m20 20-4.5-4.5" />
@@ -215,8 +224,9 @@ function onSearchKeydown(event) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
+  width: 240px;
   max-width: 100%;
+  box-sizing: border-box;
   font: inherit;
   font-size: 0.9rem;
   text-align: left;
@@ -240,13 +250,21 @@ function onSearchKeydown(event) {
   padding: 3px 8px;
   border-radius: 8px;
   gap: 6px;
+  width: 180px;
 }
-.id-picker-name {
-  font-weight: 600;
+.id-picker-id {
+  flex-shrink: 0;
+}
+/* Fills the space between the ID and the icon; cut off when too long. */
+.id-picker-text {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 220px;
+}
+.id-picker-name {
+  font-weight: 600;
 }
 .id-picker-placeholder,
 .id-picker-missing {
