@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import ConditionNode from './components/ConditionNode.vue'
 import IdPicker from './components/IdPicker.vue'
+import ChoiceDialog from './components/ChoiceDialog.vue'
+import { copyRule, hasTargetIds, hasMissingTargetIds, takePendingDraft } from './composables/useRuleBlueprint.js'
 import { localTimezone } from './composables/useTimezones.js'
 import { useConditionDrag, applySwap, applyMoveToSlot } from './composables/useConditionDrag.js'
 
@@ -23,6 +25,46 @@ const saving = ref(false)
 const editName = ref('')
 const editEnabled = ref(false)
 const editConditionTree = ref(null)
+
+// Set when the new rule was pasted from a blueprint: { idsCleared }
+const draftInfo = ref(null)
+
+function currentRuleState() {
+  return {
+    name: editName.value,
+    enabled: editEnabled.value,
+    'condition-tree': editConditionTree.value,
+    actions: actions.value,
+  }
+}
+
+// IDs cleared on paste (or never picked) must be chosen before saving or testing.
+const missingTargetIds = computed(() => hasMissingTargetIds(currentRuleState()))
+
+// ── Copy as blueprint ────────────────────────────────────────────────────────
+const ID_CHOICES = [
+  { value: 'clear', label: 'Clear IDs' },
+  { value: 'keep', label: 'Keep IDs', primary: true },
+]
+const showCopyDialog = ref(false)
+const copyNotice = ref('')
+let copyNoticeTimer = null
+
+function startCopy() {
+  if (hasTargetIds(currentRuleState())) {
+    showCopyDialog.value = true
+  } else {
+    finishCopy('keep')
+  }
+}
+
+async function finishCopy(choice) {
+  showCopyDialog.value = false
+  const reachedClipboard = await copyRule(currentRuleState(), { keepIds: choice === 'keep' })
+  copyNotice.value = reachedClipboard ? 'Copied' : 'Copied (this browser only)'
+  clearTimeout(copyNoticeTimer)
+  copyNoticeTimer = setTimeout(() => { copyNotice.value = '' }, 2500)
+}
 
 // ── Undo history (resets on save) ────────────────────────────────────────────
 const undoStack = ref([])
@@ -186,14 +228,23 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
   clearTimeout(historyTimer)
+  clearTimeout(copyNoticeTimer)
 })
-watch(() => `${String(route.name)}/${route.params.id ?? ''}`, fetchRule)
+// The draft query changes on every paste, so pasting while on RuleNew reloads too.
+watch(() => `${String(route.name)}/${route.params.id ?? ''}/${route.query.draft ?? ''}`, fetchRule)
 
 async function fetchRule() {
   error.value = null
   evalResult.value = null
   cancelActionForm()
+  draftInfo.value = null
   if (isNew.value) {
+    const draft = takePendingDraft(route.query.draft)
+    if (draft) {
+      applyRule({ ...draft.rule, actions: draft.rule.actions || [] })
+      draftInfo.value = { idsCleared: draft.idsCleared }
+      return
+    }
     applyRule({ name: 'New rule', enabled: false, actions: [] })
     return
   }
@@ -229,7 +280,7 @@ function removeRootCondition() {
 }
 
 async function saveRule() {
-  if (!rule.value) return
+  if (!rule.value || missingTargetIds.value) return
   saving.value = true
   const body = {
     name: editName.value,
@@ -322,7 +373,15 @@ function removeAction(index) {
 
     <div class="detail-head">
       <h2 class="detail-title">{{ isNew ? 'New rule' : rule.name }}</h2>
-      <button v-if="!isNew" class="btn btn-danger btn-sm" @click="deleteRule">Delete rule</button>
+      <div v-if="!isNew" class="head-actions">
+        <span v-if="copyNotice" class="hint copy-notice">{{ copyNotice }}</span>
+        <button class="btn btn-ghost btn-sm" title="Copy this rule as a blueprint, to paste as a new rule" @click="startCopy">Copy rule</button>
+        <button class="btn btn-danger btn-sm" @click="deleteRule">Delete rule</button>
+      </div>
+    </div>
+    <div v-if="isNew && draftInfo" class="alert alert-warning draft-alert">
+      Pasted from a copied rule. It isn't saved until you click <strong>Create rule</strong>.
+      <template v-if="draftInfo.idsCleared"> Pick a device or group for each condition and action first.</template>
     </div>
     <div v-if="!isNew" class="detail-meta">
       <span><strong>ID</strong> <span class="mono">{{ rule.id }}</span></span>
@@ -375,12 +434,13 @@ function removeAction(index) {
 
     <!-- ── Save / Test row ── -->
     <div class="save-row">
-      <button class="btn btn-primary" @click="saveRule" :disabled="saving">
+      <button class="btn btn-primary" @click="saveRule" :disabled="saving || missingTargetIds">
         {{ saving ? 'Saving…' : (isNew ? 'Create rule' : 'Save rule') }}
       </button>
-      <button class="btn btn-ghost" @click="evaluateRule" :disabled="evaluating || (isNew && !editConditionTree)">
+      <button class="btn btn-ghost" @click="evaluateRule" :disabled="evaluating || missingTargetIds || (isNew && !editConditionTree)">
         {{ evaluating ? 'Testing…' : 'Test now' }}
       </button>
+      <span v-if="missingTargetIds" class="hint">Pick a device or group everywhere one is missing.</span>
       <span v-if="evalResult !== null" class="eval-result">
         <span class="badge" :class="evalResult.result ? 'badge-green' : 'badge-danger'">
           {{ evalResult.result ? 'Matches' : 'No match' }}
@@ -420,7 +480,10 @@ function removeAction(index) {
               <svg class="out-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </td>
             <td>{{ action.type }}</td>
-            <td class="mono">{{ action.id }}</td>
+            <td class="mono">
+              <template v-if="action.id != null">{{ action.id }}</template>
+              <span v-else class="na">Not set</span>
+            </td>
             <td>{{ action.capability }}</td>
             <td class="actions">
               <button class="btn btn-ghost btn-sm" @click="openEditActionForm(action, index)">Edit</button>
@@ -483,9 +546,31 @@ function removeAction(index) {
       />
     </svg>
   </Teleport>
+
+  <ChoiceDialog
+    :show="showCopyDialog"
+    title="Keep device and group IDs?"
+    message="Keep them to paste this rule on the same devices. Clear them to pick new devices and groups when pasting."
+    :options="ID_CHOICES"
+    @choose="finishCopy"
+    @close="showCopyDialog = false"
+  />
 </template>
 
 <style scoped>
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.copy-notice {
+  color: var(--green-ink);
+}
+.draft-alert {
+  margin: 0 0 14px;
+}
 .rule-detail {
   display: flex;
   flex-direction: column;

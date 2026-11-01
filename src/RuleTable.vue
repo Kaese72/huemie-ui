@@ -1,11 +1,13 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import TableShell from './components/TableShell.vue'
 import DetailOverlay from './components/DetailOverlay.vue'
 import BoolBadge from './components/BoolBadge.vue'
+import ChoiceDialog from './components/ChoiceDialog.vue'
 import { useTableList } from './composables/useTableList.js'
+import { readBlueprint, hasTargetIds, clearTargetIds, setPendingDraft } from './composables/useRuleBlueprint.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -67,6 +69,43 @@ function createRule() {
   router.push({ name: 'RuleNew' })
 }
 
+// ── Paste a copied rule as an unsaved draft ──────────────────────────────────
+const ID_CHOICES = [
+  { value: 'clear', label: 'Clear IDs' },
+  { value: 'keep', label: 'Keep IDs', primary: true },
+]
+const pasteError = ref('')
+const pastedRule = ref(null) // waiting on the keep/clear IDs answer
+
+async function pasteRule() {
+  pasteError.value = ''
+  const blueprint = await readBlueprint()
+  if (!blueprint) {
+    pasteError.value = 'Nothing to paste. Open a rule and click Copy rule first.'
+    return
+  }
+  if (hasTargetIds(blueprint)) {
+    pastedRule.value = blueprint
+  } else {
+    openDraft(blueprint, false)
+  }
+}
+
+function onPasteChoice(choice) {
+  const blueprint = pastedRule.value
+  pastedRule.value = null
+  if (choice === 'clear') {
+    openDraft(clearTargetIds(blueprint), true)
+  } else {
+    openDraft(blueprint, false)
+  }
+}
+
+function openDraft(blueprint, idsCleared) {
+  const draft = setPendingDraft(blueprint, { idsCleared })
+  router.push({ name: 'RuleNew', query: { draft } })
+}
+
 async function onRuleCreated(created) {
   // Pagination/total count shift when a rule is added, so refetch rather than pushing locally.
   await refresh()
@@ -93,10 +132,12 @@ function onRuleDeleted() {
         <p class="list-lede">When something happens at home, do something about it.</p>
       </div>
       <div class="list-actions">
+        <button class="btn btn-ghost" title="Paste a copied rule as a new, unsaved rule" @click="pasteRule">Paste rule</button>
         <button class="btn btn-primary" @click="createRule">New rule</button>
       </div>
     </div>
     <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
+    <div v-if="pasteError" class="alert alert-error">{{ pasteError }}</div>
     <div class="split-content">
       <TableShell
         :columns="columns"
@@ -141,5 +182,14 @@ function onRuleDeleted() {
         <router-view @created="onRuleCreated" @updated="onRuleUpdated" @deleted="onRuleDeleted" />
       </DetailOverlay>
     </div>
+
+    <ChoiceDialog
+      :show="!!pastedRule"
+      title="Keep device and group IDs?"
+      message="This rule refers to specific devices and groups. Keep them, or clear them and pick new ones before saving."
+      :options="ID_CHOICES"
+      @choose="onPasteChoice"
+      @close="pastedRule = null"
+    />
   </div>
 </template>
