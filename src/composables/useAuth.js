@@ -44,6 +44,35 @@ function hasModify(resourceCode) {
   return currentPermissions.value?.[resourceCode]?.m === '*'
 }
 
+function hasView(resourceCode) {
+  if (currentUserIsAdmin.value) return true
+  const grant = currentPermissions.value?.[resourceCode]
+  return grant?.v === '*' || grant?.m === '*'
+}
+
+// The "lm" claim - how this session began (see
+// authentication/usertoken.LoginMethod): 'local' (username and password),
+// 'cloud' (Humi Cloud), or null for a session from before the claim existed.
+const loginMethod = computed(() => {
+  if (!useToken.value) return null
+  return decodeJwtPayload(useToken.value)?.lm ?? null
+})
+
+// localLoginRequiredReason explains why `action` (e.g. "Creating users") is
+// unavailable in this session, or returns null if it is available. The
+// authentication service refuses anything that creates lasting access - a
+// new user with a password, an API token - unless the session began with a
+// local username and password, so a revoked cloud user can't leave a way
+// back in behind. Use it to disable the button and as its tooltip; the
+// server enforces it regardless.
+function localLoginRequiredReason(action) {
+  if (loginMethod.value === 'local') return null
+  if (loginMethod.value === 'cloud') {
+    return `${action} requires signing in with a username and password. You signed in with Humi Cloud.`
+  }
+  return `${action} requires signing in with a username and password. Sign out and sign in again with your password to continue.`
+}
+
 const LOGIN_URL = '/authentication-service/v0/authentication/login'
 const LOGOUT_URL = '/authentication-service/v0/authentication/logout'
 const CLOUD_LOGIN_URL = '/authentication-service/v0/authentication/cloud'
@@ -155,6 +184,9 @@ export function useAuth() {
     currentUserId,
     currentUserIsAdmin,
     hasModify,
+    hasView,
+    loginMethod,
+    localLoginRequiredReason,
     init,
     login,
     logout,

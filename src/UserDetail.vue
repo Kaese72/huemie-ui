@@ -6,6 +6,8 @@ import { useRoute } from 'vue-router'
 import { useAuth } from './composables/useAuth.js'
 import BoolBadge from './components/BoolBadge.vue'
 import PermissionsDialog from './components/PermissionsDialog.vue'
+import GatedButton from './components/GatedButton.vue'
+import ApiTokensSection from './components/ApiTokensSection.vue'
 
 const emit = defineEmits(['updated', 'deleted'])
 const { cloudLoginAvailable, currentUserId, currentUserIsAdmin, hasModify } = useAuth()
@@ -33,6 +35,12 @@ const canManagePermissions = computed(() => currentUserIsAdmin.value || hasModif
 const showPermissionsDialog = ref(false)
 
 const showPasswordDialog = ref(false)
+// The authentication service refuses password changes for accounts linked to
+// Humi Cloud (a local password would be a way in that is never re-checked
+// against the cloud).
+const passwordBlockedReason = computed(() => user.value?.cloudLogin
+  ? 'Accounts linked to Humi Cloud sign in through the cloud and have no local password to change.'
+  : null)
 const changingPassword = ref(false)
 const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordError = ref(null)
@@ -189,13 +197,14 @@ async function linkCloud() {
       <dd>
         <BoolBadge :value="!!user.localLogin" />
         <span :class="user.localLogin ? '' : 'na'">{{ user.localLogin ? 'Yes, has a password' : 'No' }}</span>
-        <button
+        <GatedButton
           v-if="user.id === currentUserId"
           class="btn btn-ghost btn-sm"
+          :reason="passwordBlockedReason"
           @click="openPasswordDialog"
         >
           Change password
-        </button>
+        </GatedButton>
       </dd>
       <dt>Humi Cloud</dt>
       <dd>
@@ -251,6 +260,8 @@ async function linkCloud() {
       </button>
       <button class="btn btn-ghost" :disabled="saving || !isDirty()" @click="resetForm">Reset</button>
     </div>
+
+    <ApiTokensSection v-if="user.id === currentUserId" :key="user.id" />
 
     <!-- Teleported so the detail pane's stacking context can't trap it below other UI -->
     <Teleport to="body">

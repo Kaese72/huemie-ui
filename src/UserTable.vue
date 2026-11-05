@@ -6,9 +6,12 @@ import { useAuth } from './composables/useAuth.js'
 import TableShell from './components/TableShell.vue'
 import DetailOverlay from './components/DetailOverlay.vue'
 import BoolBadge from './components/BoolBadge.vue'
+import GatedButton from './components/GatedButton.vue'
 import { useTableList } from './composables/useTableList.js'
 
-const { currentUserId } = useAuth()
+const { currentUserId, localLoginRequiredReason } = useAuth()
+
+const createBlockedReason = computed(() => localLoginRequiredReason('Creating users'))
 const router = useRouter()
 const route = useRoute()
 
@@ -118,7 +121,7 @@ const selectedId = computed(() => route.params.id)
         <p class="list-lede">Who can sign in to this Appliance, and what they may do.</p>
       </div>
       <div class="list-actions">
-        <button class="btn btn-primary" @click="openCreateDialog">New user</button>
+        <GatedButton class="btn btn-primary" :reason="createBlockedReason" @click="openCreateDialog">New user</GatedButton>
       </div>
     </div>
     <div v-if="error" class="alert alert-error">Error: {{ error.message }}</div>
@@ -160,7 +163,7 @@ const selectedId = computed(() => route.params.id)
         <template #empty>
           <div class="table-empty">
             <p>No users yet.</p>
-            <p>Click <strong>New user</strong> to create one.</p>
+            <p v-if="!createBlockedReason">Click <strong>New user</strong> to create one.</p>
           </div>
         </template>
       </TableShell>
