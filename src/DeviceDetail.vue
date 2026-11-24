@@ -5,6 +5,8 @@ import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import CapabilityDialog from './components/CapabilityDialog.vue'
 import AttributeValue from './components/AttributeValue.vue'
+import RelatedRules from './components/RelatedRules.vue'
+import { useRelatedRules } from './composables/useRelatedRules.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +19,14 @@ const activeTab = computed(() => route.params.tab)
 const editingName = ref(false)
 const nameDraft = ref('')
 const savingName = ref(false)
+// Fetched as soon as the page opens (and when the ID changes), so the tab
+// can show its count before it is selected.
+const {
+  rules: relatedRules,
+  loading: relatedRulesLoading,
+  error: relatedRulesError,
+  available: relatedRulesAvailable,
+} = useRelatedRules('related-devices', () => route.params.id)
 
 onMounted(fetchDevice)
 watch(() => route.params.id, fetchDevice)
@@ -170,6 +180,19 @@ async function forgetDevice() {
     <div class="tabs">
       <button class="tab" :class="{ active: activeTab === 'state' }" @click="selectTab('state')">State</button>
       <button class="tab" :class="{ active: activeTab === 'history' }" @click="selectTab('history')">Trigger history</button>
+      <button v-if="relatedRulesAvailable" class="tab" :class="{ active: activeTab === 'rules' }" @click="selectTab('rules')">
+        Automation rules<template v-if="!relatedRulesLoading && !relatedRulesError"> ({{ relatedRules.length }})</template>
+      </button>
+    </div>
+
+    <div v-if="activeTab === 'rules' && relatedRulesAvailable">
+      <RelatedRules
+        kind="device"
+        :target-id="device.id"
+        :rules="relatedRules"
+        :loading="relatedRulesLoading"
+        :error="relatedRulesError"
+      />
     </div>
 
     <div v-if="activeTab === 'state'">

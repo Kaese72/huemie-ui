@@ -81,7 +81,26 @@ const textOperatorChoices = computed(() => {
 // so all three pickers (type/text-op/numeric-op/date-op) look and behave
 // alike.
 const numericOperatorChoices = computed(() => NUMERIC_OPERATORS.map(o => ({ ...o, enabled: true })))
-const dateOperatorChoices = computed(() => DATE_OPERATORS.map(o => ({ ...o, enabled: true })))
+// col.filter.nullable adds two value-less choices to a date column: "none"
+// (no date set) and "any" (some date set), sent as the backend's is-null
+// operator. They're kept in selectedDateOperator as the pseudo-operators
+// below; col.filter.nullLabels can rename them for the column (e.g. rules'
+// "not scheduled"/"scheduled").
+const DATE_NULL_NONE = 'null:none'
+const DATE_NULL_ANY = 'null:any'
+const isDateNullChoice = op => op === DATE_NULL_NONE || op === DATE_NULL_ANY
+
+const dateOperatorChoices = computed(() => {
+  const choices = DATE_OPERATORS.map(o => ({ ...o, enabled: true }))
+  if (props.col.filter?.nullable) {
+    const labels = props.col.filter.nullLabels || {}
+    choices.push(
+      { op: DATE_NULL_NONE, label: labels.none || 'none', enabled: true },
+      { op: DATE_NULL_ANY, label: labels.any || 'any', enabled: true },
+    )
+  }
+  return choices
+})
 
 // Only types with at least one device set to them are enabled/selectable.
 // If none have any (e.g. a brand-new attribute with no stats yet), don't
@@ -194,8 +213,13 @@ function hydrateFields(filter) {
   } else if (filterType.value === 'boolean') {
     booleanValue.value = filter.value === 'true'
   } else if (filterType.value === 'date') {
-    selectedDateOperator.value = filter.op
-    dateValue.value = isoToLocalInput(filter.value)
+    if (filter.op === 'is-null') {
+      selectedDateOperator.value = filter.value === 'true' ? DATE_NULL_NONE : DATE_NULL_ANY
+      dateValue.value = ''
+    } else {
+      selectedDateOperator.value = filter.op
+      dateValue.value = isoToLocalInput(filter.value)
+    }
   } else if (filterType.value === 'attribute') {
     userSelectedType.value = true
     if (filter.op === 'bool-eq') {
@@ -229,6 +253,9 @@ function buildFilter() {
     return { op: 'bool-eq', value: booleanValue.value ? 'true' : 'false' }
   }
   if (filterType.value === 'date') {
+    if (isDateNullChoice(selectedDateOperator.value)) {
+      return { op: 'is-null', value: selectedDateOperator.value === DATE_NULL_NONE ? 'true' : 'false' }
+    }
     if (!dateValue.value) return null
     return { op: selectedDateOperator.value, value: new Date(dateValue.value).toISOString() }
   }
@@ -573,10 +600,16 @@ function startResize(event) {
                 @click="selectDateOperator(o)"
               >{{ o.label }}</button>
             </div>
-            <label class="field-label">Value</label>
-            <div class="value-field">
-              <input v-model="dateValue" type="datetime-local" class="filter-input" />
-              <button type="button" class="clear-x" :disabled="!hasAnyValue" title="Clear filter" @click="explicitClear">✕</button>
+            <template v-if="!isDateNullChoice(selectedDateOperator)">
+              <label class="field-label">Value</label>
+              <div class="value-field">
+                <input v-model="dateValue" type="datetime-local" class="filter-input" />
+                <button type="button" class="clear-x" :disabled="!hasAnyValue" title="Clear filter" @click="explicitClear">✕</button>
+              </div>
+            </template>
+            <!-- none/any need no value; keep a way to clear the filter. -->
+            <div v-else class="value-field">
+              <button type="button" class="btn btn-ghost btn-sm" :disabled="!hasAnyValue" @click="explicitClear">Clear filter</button>
             </div>
           </template>
 

@@ -3,6 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import CapabilityDialog from './components/CapabilityDialog.vue'
+import RelatedRules from './components/RelatedRules.vue'
+import { useRelatedRules } from './composables/useRelatedRules.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,6 +14,14 @@ const showDialog = ref(false)
 const selectedCapability = ref(null)
 const triggerAudits = ref([])
 const activeTab = computed(() => route.params.tab)
+// Fetched as soon as the page opens (and when the ID changes), so the tab
+// can show its count before it is selected.
+const {
+	rules: relatedRules,
+	loading: relatedRulesLoading,
+	error: relatedRulesError,
+	available: relatedRulesAvailable,
+} = useRelatedRules('related-groups', () => route.params.id)
 
 async function fetchGroup() {
 	group.value = null;
@@ -100,6 +110,19 @@ function triggerCapability(argumentValues) {
 		<div class="tabs">
 			<button class="tab" :class="{ active: activeTab === 'state' }" @click="selectTab('state')">State</button>
 			<button class="tab" :class="{ active: activeTab === 'history' }" @click="selectTab('history')">Trigger history</button>
+			<button v-if="relatedRulesAvailable" class="tab" :class="{ active: activeTab === 'rules' }" @click="selectTab('rules')">
+				Automation rules<template v-if="!relatedRulesLoading && !relatedRulesError"> ({{ relatedRules.length }})</template>
+			</button>
+		</div>
+
+		<div v-if="activeTab === 'rules' && relatedRulesAvailable">
+			<RelatedRules
+				kind="group"
+				:target-id="group.id"
+				:rules="relatedRules"
+				:loading="relatedRulesLoading"
+				:error="relatedRulesError"
+			/>
 		</div>
 
 		<div v-if="activeTab === 'state'">

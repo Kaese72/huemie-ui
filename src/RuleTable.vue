@@ -16,9 +16,16 @@ const columns = [
   { key: 'id', label: 'ID', width: '60px', sortable: true },
   { key: 'name', label: 'Name', sortable: true, filter: { type: 'text' } },
   { key: 'enabled', label: 'Enabled', width: '72px', filter: { type: 'boolean' } },
+  // The device and group IDs the rule refers to (ittt-orchestrator derives
+  // them from the conditions and actions); the id-list filter matches rules
+  // involving any of the given IDs.
+  { key: 'related-devices', label: 'Devices', width: '110px', filter: { type: 'id-list' } },
+  { key: 'related-groups', label: 'Groups', width: '110px', filter: { type: 'id-list' } },
   { key: 'actions', label: 'Actions', width: '72px' },
   { key: 'cooldown', label: 'Cooldown', width: '72px' },
-  { key: 'next', label: 'Next occurrence', width: '200px' },
+  // nullable: the date filter also offers "none"/"any" (is-null), i.e.
+  // rules that are or aren't scheduled at all.
+  { key: 'next-occurence', label: 'Next occurrence', width: '200px', filter: { type: 'date', nullable: true, nullLabels: { none: 'not scheduled', any: 'scheduled' } } },
 ]
 
 function isCooldownActive(rule) {
@@ -159,6 +166,14 @@ function onRuleDeleted() {
         @resize="onResize"
       >
         <template #cell-enabled="{ row }"><BoolBadge :value="row.enabled" /></template>
+        <template #cell-related-devices="{ row }">
+          <span v-if="row['related-devices']?.length" class="mono" :title="row['related-devices'].join(', ')">{{ row['related-devices'].join(', ') }}</span>
+          <span v-else class="na">—</span>
+        </template>
+        <template #cell-related-groups="{ row }">
+          <span v-if="row['related-groups']?.length" class="mono" :title="row['related-groups'].join(', ')">{{ row['related-groups'].join(', ') }}</span>
+          <span v-else class="na">—</span>
+        </template>
         <template #cell-actions="{ row }">{{ row.actions?.length ?? 0 }}</template>
         <template #cell-cooldown="{ row }">
           <span v-if="isCooldownActive(row)" class="badge badge-neutral" :title="`Cooling down until ${new Date(row['cooldown-until']).toLocaleString()}`">
@@ -166,7 +181,7 @@ function onRuleDeleted() {
           </span>
           <span v-else class="na">—</span>
         </template>
-        <template #cell-next="{ row }">
+        <template #cell-next-occurence="{ row }">
           <template v-if="row['next-occurence']">{{ new Date(row['next-occurence']).toLocaleString(undefined, { timeZoneName: 'short' }) }}</template>
           <span v-else class="na">—</span>
         </template>
